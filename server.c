@@ -2,6 +2,7 @@
 
 typedef struct sockaddr SA;
 # define BUFF_SIZE 1024;
+# define THREADS_TO_SERVE 20
 
 void *hanlde_echo(void *data) 
 {
@@ -43,7 +44,37 @@ void *hanlde_echo(void *data)
 int main(int ac, char **av) 
 {
 	int sock_fd;
-	struct sockaddr_in info;	
+	struct sockaddr_in info;
+
+	// The head of pool
+	t_queue **pool_head = malloc(sizeof(t_queue *));
+
+int one_connection_fd = 1;
+int two_connection_fd = 2;
+int three_connection_fd = 3;
+
+	add_to_pool(pool_head, &one_connection_fd);
+	add_to_pool(pool_head, &two_connection_fd);
+	add_to_pool(pool_head, &three_connection_fd);
+
+	printf("Pool before threads:\n");
+	print_pool(pool_head);
+
+	get_from_pool(pool_head);
+	printf("Pool after getting one connection:\n");
+	print_pool(pool_head);
+	get_from_pool(pool_head);
+	printf("Pool after getting second connection:\n");
+	print_pool(pool_head);
+	get_from_pool(pool_head);
+	printf("Pool after getting third connection:\n");
+
+	// Creating max number threads (20 IN OUR CASE FOR POOL)
+	// pthread_t threads[THREADS_TO_SERVE];
+
+	// for (int i = 0; i < THREADS_TO_SERVE;i++)
+	// 	pthread_create(&threads[i],NULL,&hanlde_echo,NULL);
+
 	
 	// Clearing in case of junk
 	memset(&info,0,sizeof(info));
@@ -112,14 +143,10 @@ int main(int ac, char **av)
 		// The accept returns the socket 
 
 		// Creating the thread for each accepted connection (so the main thread go ahead and accpet new connections)
-		pthread_t thread;
 
 		int *c = malloc(sizeof(int));
 		*c = connection_sock_fd;
-		pthread_create(&thread,NULL,&hanlde_echo,c);
 
-		// Detaching when thread is done so the function ends )
-		pthread_detach(thread);
 		printf("-----------------------------\n");
 		fflush(stdout);
 
