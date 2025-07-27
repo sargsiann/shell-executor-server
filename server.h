@@ -10,6 +10,8 @@
 # include <arpa/inet.h>
 # include <unistd.h>
 # include <netdb.h>
+# include <fcntl.h>
+# include <pthread.h>
 
 void	socket_binding(struct addrinfo *res) ;
 
