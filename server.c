@@ -2,43 +2,68 @@
 
 typedef struct sockaddr SA;
 # define BUFF_SIZE 1024;
-# define THREADS_TO_SERVE 20
+# define THREADS_TO_SERVE 2
+
+// Mutex to prevent threads use members of pool
+pthread_mutex_t lock;
+pthread_cond_t cond;
+
+// The head of pool
+t_queue **pool_head;
 
 void *hanlde_echo(void *data) 
 {
-	// Casting the fd
-	int *s = (int *)data;
-	int connection_socket_fd = *s;
+    char buffer[1024];   
+	t_queue *node_to_handle;
 
-    char buffer[1024];    
     while (1)
     {
+
+
+		// Dereferencing and getting (Locking with mutex because another thread may access at that time to avoid race conditions)
+		// And dont work for example NULL
+		if (!node_to_handle) {
+			pthread_mutex_lock(&lock);
+			node_to_handle = get_from_pool(pool_head);
+			// Making the thread wait before get the signal that we got connection in case if our node is not free else starting doing our work
+			if (!node_to_handle)
+				pthread_cond_wait(&cond,&lock);
+			pthread_mutex_unlock(&lock);
+		}
+		if (!node_to_handle)
+			continue;
 		// Setting 0 each time
         memset(buffer, 0, sizeof(buffer));
-
+	
 		// Getting it
-        int bytes_received = recv(connection_socket_fd, buffer, sizeof(buffer), 0);
+        int bytes_received = recv(*(node_to_handle->connection_fd), buffer, sizeof(buffer), 0);
 		if (bytes_received == -1) {
             perror("Recv error :");
             break;
         } else if (bytes_received == 0) {
+			// If we got disconected by client our thread frees that part no need for mutex because we onl
+			// already have access to that pointer (we disconnected it from main tasks queue)
             printf("\nClient disconnected\n");
+
+			// And cloesing that socket connection fd from out thread
+		    close(*(node_to_handle->connection_fd));
 			fflush(stdout);
-            break;
-        }
+			// Freeing node for mem managment and assinging NULL for further searching 
+			free(node_to_handle);
+			node_to_handle = NULL;
+			continue;
+		}
 
 		// Printing message in server
 		printf("Client : %s", buffer);
 		fflush(stdout);
 
 		// Sending back the message
-        if (send(connection_socket_fd, buffer, strlen(buffer), 0) == -1) {
+        if (send(*(node_to_handle->connection_fd), buffer, strlen(buffer), 0) == -1) {
             perror("Send Error :");
             break;
         }
     }
-	// After close the fd
-    close(connection_socket_fd);
 }
 
 int main(int ac, char **av) 
@@ -46,36 +71,23 @@ int main(int ac, char **av)
 	int sock_fd;
 	struct sockaddr_in info;
 
-	// The head of pool
-	t_queue **pool_head = malloc(sizeof(t_queue *));
-
-int one_connection_fd = 1;
-int two_connection_fd = 2;
-int three_connection_fd = 3;
-
-	add_to_pool(pool_head, &one_connection_fd);
-	add_to_pool(pool_head, &two_connection_fd);
-	add_to_pool(pool_head, &three_connection_fd);
-
-	printf("Pool before threads:\n");
-	print_pool(pool_head);
-
-	get_from_pool(pool_head);
-	printf("Pool after getting one connection:\n");
-	print_pool(pool_head);
-	get_from_pool(pool_head);
-	printf("Pool after getting second connection:\n");
-	print_pool(pool_head);
-	get_from_pool(pool_head);
-	printf("Pool after getting third connection:\n");
+	// Initing our pool_head;
+	pool_head = malloc(sizeof(t_queue *));
 
 	// Creating max number threads (20 IN OUR CASE FOR POOL)
 	// pthread_t threads[THREADS_TO_SERVE];
 
-	// for (int i = 0; i < THREADS_TO_SERVE;i++)
-	// 	pthread_create(&threads[i],NULL,&hanlde_echo,NULL);
+	pthread_t threads[THREADS_TO_SERVE];
 
+	for (int i = 0; i < THREADS_TO_SERVE;i++)
+		pthread_create(&threads[i],NULL,&hanlde_echo,NULL);
+
+	// Initing our mutex
+	pthread_mutex_init(&lock,NULL);
 	
+	// Initing our condition variable (our threads will wait and work depends on it)
+	pthread_cond_init(&cond,NULL);
+
 	// Clearing in case of junk
 	memset(&info,0,sizeof(info));
 
@@ -146,6 +158,16 @@ int three_connection_fd = 3;
 
 		int *c = malloc(sizeof(int));
 		*c = connection_sock_fd;
+
+		pthread_mutex_lock(&lock);
+		// Adding to pool 
+		// Preventing other threads changeing pull at this moment
+		// For example one thread may be do get and add in one time
+		add_to_pool(pool_head,c);
+		// Sending the signal to start working
+		pthread_cond_signal(&cond);
+		// Unlocking
+		pthread_mutex_unlock(&lock);
 
 		printf("-----------------------------\n");
 		fflush(stdout);

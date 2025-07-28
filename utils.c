@@ -10,3 +10,8 @@ void	 print_pool(t_queue **head)
 		printf("%d\n",*(tmp->connection_fd));
 	}
 }
+
+void	join_threads(pthread_t threads[]) 
+{
+
+}
