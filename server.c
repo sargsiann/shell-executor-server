@@ -8,27 +8,76 @@ typedef struct sockaddr SA;
 pthread_mutex_t lock;
 pthread_cond_t cond;
 
+
 // The head of pool
 t_queue **pool_head;
 
+// Wee need reallocator (will read by 1kb each time and if needed realloc our main message for that)
+
+
+// Message : handler (buffer maybe realloced each time if the message is big)
+/*
+	Getting the part of command runing to pass it through validator
+	And pass the file handler to get files and also maybe checking
+*/
+
+// File handler :: fucntions to handle file getting via tcp (we will write our simple protocol)
+/*
+	Find the liine for file information
+	If there is read it creating and starting to listen file information
+	after close fd s
+*/
+
+// Executer function 
+/*
+	Execute via the system()
+	after call clean all files for cleaning client files from machine
+*/
+
+// Validator function 
+/*
+	to validate file (to discard such things as sh ...[filename]) or ./[filename]
+	to handle cases of shell injection and prevent them
+*/
+
+
+
+void	heap_checker(char *message) 
+{
+
+}
+
+
+void	message_handler(char buffer[]) 
+{
+	
+}
+
+bool	check_for_end() {
+	
+}
+
 void *hanlde_echo(void *data) 
 {
-    char buffer[1024];   
-	t_queue *node_to_handle;
+    char buffer[1024];
+	t_queue *node_to_handle = NULL;
+	char *message = NULL;
 
+	// For further will be handled for http
+	int protocol_type = 0;
     while (1)
     {
-
-
 		// Dereferencing and getting (Locking with mutex because another thread may access at that time to avoid race conditions)
 		// And dont work for example NULL
 		if (!node_to_handle) {
 			pthread_mutex_lock(&lock);
 			node_to_handle = get_from_pool(pool_head);
-			// Making the thread wait before get the signal that we got connection in case if our node is not free else starting doing our work
+			// ???????????????????? Why there ??
 			if (!node_to_handle)
-				pthread_cond_wait(&cond,&lock);
+				pthread_cond_wait(&cond,&lock);	
+			// Making the thread wait before get the signal that we got connection in case if our node is not free else starting doing our work
 			pthread_mutex_unlock(&lock);
+	
 		}
 		if (!node_to_handle)
 			continue;
@@ -40,7 +89,8 @@ void *hanlde_echo(void *data)
 		if (bytes_received == -1) {
             perror("Recv error :");
             break;
-        } else if (bytes_received == 0) {
+		}
+		if (bytes_received == 0) {
 			// If we got disconected by client our thread frees that part no need for mutex because we onl
 			// already have access to that pointer (we disconnected it from main tasks queue)
             printf("\nClient disconnected\n");
@@ -50,12 +100,26 @@ void *hanlde_echo(void *data)
 			fflush(stdout);
 			// Freeing node for mem managment and assinging NULL for further searching 
 			free(node_to_handle);
+
+			// And the whole message from client
+			free(message);
 			node_to_handle = NULL;
+			// And continue to listen not break from the loop
 			continue;
 		}
 
-		// Printing message in server
-		printf("Client : %s", buffer);
+		// Need to add checker for message size to not overload the heap
+		// Re allocateing each time for getting the message by chunks
+		message = string_reallocator(message,buffer);
+		
+		// Starting from new input
+		// if (message != NULL && message[strlen(message) - 1] == '\n')
+		// {
+		// 	free(message);
+		// 	message = NULL;
+		// }
+
+		printf("%s\n",message);
 		fflush(stdout);
 
 		// Sending back the message
@@ -69,7 +133,7 @@ void *hanlde_echo(void *data)
 int main(int ac, char **av) 
 {
 	int sock_fd;
-	struct sockaddr_in info;
+	struct sockaddr_in6 info;
 
 	// Initing our pool_head;
 	pool_head = malloc(sizeof(t_queue *));
@@ -92,14 +156,14 @@ int main(int ac, char **av)
 	memset(&info,0,sizeof(info));
 
 	// THIS IS HOST TO NETWORK BYTES CASTING
-	info.sin_port = htons(3490);
+	info.sin6_port = htons(3490);
 	// Any local address
-	info.sin_addr.s_addr = INADDR_ANY;
+	info.sin6_addr = in6addr_any;
 	// IP4 VERSION
-	info.sin_family = AF_INET;
+	info.sin6_family = AF_INET6;
 
 	// AF INET -> IPV4 SOCK_STREAM->TCP O->FOR ANY PROTOCOL TYPE
-	if ((sock_fd = socket(AF_INET,SOCK_STREAM, 0)) == -1) 
+	if ((sock_fd = socket(AF_INET6,SOCK_STREAM, 0)) == -1) 
 	{
 		perror("Socket creatin error");
 		exit(1);
