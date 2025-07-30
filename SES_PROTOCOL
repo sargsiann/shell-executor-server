@@ -1,0 +1,26 @@
+SES PROTOCOL BETA VERSION (Simple Protocol )
+
+
+Ses Protocol request FORM :
+_____________________________________________________________________
+The Request Should contain this FORM at this version
+								(Files cannot be)
+(X) <|COMMAND|> : The Commands <|FILES|> <|>FILE1,FILE1_SIZE(IN BYTES),FILE1_CONTENT<|>, <|>FILEN ,FILEN_SIZE,FILEN_CONTENT<|> <|END|>
+
+(X) THE <|COMMAND|> <|FILES|> <|END|> <|> WORDS ARE RESERVED SO USING IT MESSAGES, IN BRACES, IN FILES
+CAN LEAD TO UNDEFINED BEHAVIOUR AT THIS MOMENT DUE TO PARSING TIME SHORTNESS
+(X) ANY SYMBOL AFTER THE <|END|> WILL NOT EVEN CONSIDERED AND WILL LOST
+_____________________________________________________________________
+
+
+Ses Protocol Safety Rules at this version :
+_____________________________________________________________________
+
+Commands Part :
+	(X) DETECTION OF POTENTIALLY UNSAFE COMMANDS OR UNSAFE EXPRESSIONS WILL NOT BE EXECUTED
+	(X) COMMANDS THATS EXECUTION WILL LAST MORE THAN 5SECS WILL BE INTERUPTED DUE TO NOT OVERLOADING THE SYSTEM
+	(X) THE COMMAND THAT WILL BE EXECUTED ./ LIKE FILES OR SH OR BASH USING TO EXECUTE ANY FILE WILL BE FORBIDDEN
+Files Part : 
+	(X) TOO MUCH BIG FILES WILL BE CHECKED EVERY TIME TO AVOID HEAP OVERLOADING
+	(X) EXECUTABLE FILES EVEN IF THERE ARE WILL BE BLOCKED IN THE COMMANDS PART
+_____________________________________________________________________

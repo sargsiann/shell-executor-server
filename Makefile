@@ -4,7 +4,7 @@ SERVER = server
 
 CC = gcc
 
-OTHERS_SRC = thread_pool.c utils.c
+OTHERS_SRC = thread_pool.c utils.c parser.c file_handler.c executor.c validator.c
 CL_SRC = client.c
 SV_SRC = server.c
 

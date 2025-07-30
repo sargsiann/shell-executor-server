@@ -11,7 +11,7 @@
 # include <unistd.h>
 # include <netdb.h>
 # include <fcntl.h>
-
+#include <malloc.h>
 # include <pthread.h>
 
 // Pool member for assigning to thread it will be locked that exact member of queue by the mutex
@@ -26,6 +26,7 @@ void	add_to_pool(t_queue **pool_head,int *connection_fd);
 t_queue *get_from_pool(t_queue **head) ;
 void	print_pool(t_queue **head);
 char	*string_reallocator(char *old_message,char *buffer) ;
+char	**parser_ses(char *message) ;
 
 
 #endif

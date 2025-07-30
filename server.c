@@ -41,20 +41,27 @@ t_queue **pool_head;
 */
 
 
-
+// Heap checker function to avoid overlap
 void	heap_checker(char *message) 
 {
 
 }
 
+// Fucntion for handleing ses request
 
-void	message_handler(char buffer[]) 
+char	*handle_request_ses(char *request) 
 {
-	
-}
+	// Result for sending back
+	char	*result;
 
-bool	check_for_end() {
-	
+	// Tokens for command and for files
+	char	**tokens;
+	// So our request dont start with this form
+	if (strstr(request,"<|COMMAND|>") - request != 0) {
+		result = "Error : Request must start with <|COMMAND|>";
+		return result;
+	}
+	tokens = parser_ses(request);
 }
 
 void *hanlde_echo(void *data) 
@@ -62,13 +69,18 @@ void *hanlde_echo(void *data)
     char buffer[1024];
 	t_queue *node_to_handle = NULL;
 	char *message = NULL;
+	char *response = NULL;
+
+
 
 	// For further will be handled for http
 	int protocol_type = 0;
+
     while (1)
     {
 		// Dereferencing and getting (Locking with mutex because another thread may access at that time to avoid race conditions)
 		// And dont work for example NULL
+
 		if (!node_to_handle) {
 			pthread_mutex_lock(&lock);
 			node_to_handle = get_from_pool(pool_head);
@@ -90,6 +102,8 @@ void *hanlde_echo(void *data)
             perror("Recv error :");
             break;
 		}
+
+		
 		if (bytes_received == 0) {
 			// If we got disconected by client our thread frees that part no need for mutex because we onl
 			// already have access to that pointer (we disconnected it from main tasks queue)
@@ -97,7 +111,6 @@ void *hanlde_echo(void *data)
 
 			// And cloesing that socket connection fd from out thread
 		    close(*(node_to_handle->connection_fd));
-			fflush(stdout);
 			// Freeing node for mem managment and assinging NULL for further searching 
 			free(node_to_handle);
 
@@ -111,16 +124,12 @@ void *hanlde_echo(void *data)
 		// Need to add checker for message size to not overload the heap
 		// Re allocateing each time for getting the message by chunks
 		message = string_reallocator(message,buffer);
-		
-		// Starting from new input
-		// if (message != NULL && message[strlen(message) - 1] == '\n')
-		// {
-		// 	free(message);
-		// 	message = NULL;
-		// }
 
-		printf("%s\n",message);
-		fflush(stdout);
+		// If we got that <|END|> keyword that means that we got to the end
+		if (strstr(message,"<|END|>")) {
+			response = handle_request_ses(message);
+			free(message);
+		}
 
 		// Sending back the message
         if (send(*(node_to_handle->connection_fd), buffer, strlen(buffer), 0) == -1) {
@@ -134,6 +143,7 @@ int main(int ac, char **av)
 {
 	int sock_fd;
 	struct sockaddr_in6 info;
+
 
 	// Initing our pool_head;
 	pool_head = malloc(sizeof(t_queue *));
@@ -212,7 +222,6 @@ int main(int ac, char **av)
 		
 		printf("-----------------------------\n");
 		printf("Got connected by IP %s Port %d \n",ip_str,port);
-		fflush(stdout);
 
 
 		// The main socket binded uses for listening 
@@ -235,6 +244,5 @@ int main(int ac, char **av)
 
 		printf("-----------------------------\n");
 		fflush(stdout);
-
-	}	
+	}
 }
