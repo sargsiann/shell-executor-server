@@ -5,6 +5,8 @@ void	create_file(t_queue **files_head, char *file_name, char *file_content)
 {
 	int	*fd_ptr = malloc(sizeof(int));
 
+	printf("%s\n",file_name);
+	fflush(stdout);
 	int	fd = open(file_name,O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 
 	if (fd == -1)
