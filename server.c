@@ -2,11 +2,10 @@
 
 typedef struct sockaddr SA;
 # define BUFF_SIZE 1024;
-# define THREADS_TO_SERVE 4
+# define THREADS_TO_SERVE 10
 
 // Mutex to prevent threads use members of pool
 pthread_mutex_t lock;
-int	ready = 0;
 pthread_cond_t cond;
 
 
@@ -45,23 +44,23 @@ char	*handle_request_ses(char *request, int conection_fd)
 	tokens = parser_ses(request);
 	// Preventing race conditions in threads
 
-	
 	if (tokens[1])
 		files = file_handler(tokens[1]);
 	
 	pthread_mutex_lock(&lock);
 	int stdout_fd = dup(STDOUT_FILENO);
 	dup2(conection_fd,STDOUT_FILENO);
-	fflush(stdout);
 	int status = system(tokens[0]);
 	// Like this ??
 	dup2(stdout_fd,STDOUT_FILENO);
 	// Whyyyy ??
 	close(stdout_fd);
-	pthread_mutex_unlock(&lock);
 	if (tokens[1]) {
 		free_pool(files,1);
+		files = NULL;
 	}
+	tokens = NULL;
+	pthread_mutex_unlock(&lock);
 }
 
 void *hanlde_echo(void *data) 

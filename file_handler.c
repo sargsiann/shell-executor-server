@@ -5,8 +5,6 @@ void	create_file(t_queue **files_head, char *file_name, char *file_content)
 {
 	int	*fd_ptr = malloc(sizeof(int));
 
-	printf("%s\n",file_name);
-	fflush(stdout);
 	int	fd = open(file_name,O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 
 	if (fd == -1)
@@ -72,7 +70,6 @@ t_queue **file_handler(char *files)
 		}
 		// Getting the file content
 		content = get_substr(tmp,handler);
-		fflush(stdout);
 		// Comes file creation phase and adding to queue
 		pthread_mutex_lock(&lock);
 		create_file(files_head,file_name,content);

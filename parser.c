@@ -16,7 +16,7 @@ char	*get_token(char *request, short member)
 	size_t len = end_index - start_index;
 
 	char *token = malloc(end_index - start_index + 1);
-	memset(token,0,len);
+	memset(token,0,len + 1);
 	strncpy(token,start_index,len);
 	return token;
 }
@@ -33,11 +33,16 @@ char	**parser_ses(char *message)
 	
 	// Getting the index for splitting to command part and to file part
 
+	// Message comes right
+	// printf("%s\n",message);
+
 	commands = get_token(message, 0);
 	if (!strstr(message,"<|FILES|>"))
 		files = NULL;
 	else
 		files = get_token(message,1);
+	
+
 	tokens[0] = commands;
 	tokens[1] = files;
 	return tokens;

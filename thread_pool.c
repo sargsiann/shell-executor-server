@@ -54,13 +54,15 @@ void	free_pool(t_queue **head, int flag)
 	{
 		tmp = tmp->next;
 		// In case of wee also need close file dp
-		if (flag)
-			close(*(freeable->connection_fd));
-		if (freeable->name)
+		if (flag) {
+			close(*freeable->connection_fd);
+		}
+		if (freeable->name) {
 			remove(freeable->name);
-		
+		}
 		free(freeable);
 		freeable = tmp;
 	}
 	free(head);
+	head = NULL;
 }

@@ -8,7 +8,7 @@ for i in $(seq 1 $N); do
     {
         # Prepare unique message
         FILE_CONTENT="file$i"
-        MSG="<|COMMAND|>cat x<|FILES|><|>x,$FILE_NAME<|><|END|>"
+        MSG="<|COMMAND|>cat x<|FILES|><|>x,$FILE_CONTENT<|><|END|>"
 
         echo -e "$MSG \n" | nc -q 1 $HOST $PORT
     } &

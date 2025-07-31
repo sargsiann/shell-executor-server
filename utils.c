@@ -44,8 +44,9 @@ char	*get_substr(char *from,char *to)
 	if (!from || !to)
 		return (NULL);
 	int		len = to - from + 1;
-	char	*res = malloc(len);
+
+	char	*res = malloc(len + 1);
 	memset(res,0,len);
-	strncpy(res,from,len - 1);
+	strncpy(res,from,len);
 	return res;
 }
