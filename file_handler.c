@@ -1,6 +1,5 @@
 #include "server.h"
 
-extern pthread_mutex_t lock;
 
 void	create_file(t_queue **files_head, char *file_name, char *file_content) 
 {
@@ -17,7 +16,7 @@ void	create_file(t_queue **files_head, char *file_name, char *file_content)
 
 	*fd_ptr = fd;
 
-	add_to_pool(files_head, fd_ptr);
+	add_to_pool(files_head, fd_ptr, file_name);
 	close(fd);
 }
 
@@ -28,8 +27,7 @@ t_queue **file_handler(char *files)
 	// Getting to
 	char	*handler = strstr(files,"<|>");
 	
-	printf("handleing filess \n");
-	fflush(stdout);
+
 	// If we dont got any files (error)
 	if (!handler)
 		return NULL;
@@ -51,8 +49,8 @@ t_queue **file_handler(char *files)
 		handler = strstr(handler,",");
 
 		// // If we dont get separator it refers to be error
-		if (!handler) {
-			return NULL;
+		if (!handler && in_file) {
+			return files_head;
 		}
 
 		
@@ -72,14 +70,11 @@ t_queue **file_handler(char *files)
 		}
 		// Getting the file content
 		content = get_substr(tmp,handler);
-
-		printf("[%s] : name [%s] : cont\n",file_name,content);
 		fflush(stdout);
 		// Comes file creation phase and adding to queue
 		pthread_mutex_lock(&lock);
 		create_file(files_head,file_name,content);
 		pthread_mutex_unlock(&lock);
-		
 		handler += 1;
 		// Got out from file section;
 		in_file = false;
@@ -90,6 +85,7 @@ t_queue **file_handler(char *files)
 		if (!handler)
 			break;
 		in_file = true;
+		handler += 3;
 	}
 	return files_head;
 }

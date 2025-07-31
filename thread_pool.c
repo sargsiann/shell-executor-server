@@ -4,12 +4,13 @@
 
 // Getting the head of pool and connection fd to adding it to end of pool
 
-void	add_to_pool(t_queue **pool_head,int *connection_fd) 
+void	add_to_pool(t_queue **pool_head,int *connection_fd, char *name) 
 {
 	// Initing the new member
 	t_queue *member = malloc(sizeof(t_queue ));
 	member->connection_fd = connection_fd;
 	member->next = NULL;
+	member->name = name;
 
 	// In case of emptyness
 	if (!*pool_head){
@@ -48,13 +49,16 @@ void	free_pool(t_queue **head, int flag)
 		return ;
 	t_queue *tmp = *head;
 	t_queue	*freeable = tmp;
-
+	
 	while (tmp)
 	{
 		tmp = tmp->next;
 		// In case of wee also need close file dp
 		if (flag)
 			close(*(freeable->connection_fd));
+		if (freeable->name)
+			remove(freeable->name);
+		
 		free(freeable);
 		freeable = tmp;
 	}

@@ -2,7 +2,7 @@
 
 typedef struct sockaddr SA;
 # define BUFF_SIZE 1024;
-# define THREADS_TO_SERVE 2
+# define THREADS_TO_SERVE 10
 
 // Mutex to prevent threads use members of pool
 pthread_mutex_t lock;
@@ -65,17 +65,21 @@ char	*handle_request_ses(char *request, int conection_fd)
 	int stdout_fd = dup(STDOUT_FILENO);
 
 	dup2(conection_fd,STDOUT_FILENO);
-	system(tokens[0]);
-	fflush(stdout);
 
-	if (tokens[1])
+	int status = system(tokens[0]);
+
+	if (tokens[1]) {
 		free_pool(files,1);
+	}
+
 	// Like this ??
 	dup2(stdout_fd,STDOUT_FILENO);
 
 	// Whyyyy ??
 	close(stdout_fd);
-	fflush(stdout);
+
+		
+	
 	pthread_mutex_unlock(&lock);
 }
 
@@ -247,7 +251,7 @@ int main(int ac, char **av)
 		// Adding to pool 
 		// Preventing other threads changeing pull at this moment
 		// For example one thread may be do get and add in one time
-		add_to_pool(pool_head,c);
+		add_to_pool(pool_head,c,NULL);
 		// Sending the signal to start working
 		pthread_cond_signal(&cond);
 		// Unlocking
