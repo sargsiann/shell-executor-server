@@ -46,6 +46,6 @@ char	*get_substr(char *from,char *to)
 	int		len = to - from + 1;
 	char	*res = malloc(len);
 	memset(res,0,len);
-	strncpy(res,from,len - 1);
+	strncpy(res,from,len);
 	return res;
 }

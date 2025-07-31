@@ -44,6 +44,7 @@ char	*handle_request_ses(char *request, int conection_fd)
 {
 	// Result for sending back
 	char	*result;
+	t_queue	**files;
 
 	// Tokens for command and for files
 	char	**tokens;
@@ -55,15 +56,20 @@ char	*handle_request_ses(char *request, int conection_fd)
 
 	tokens = parser_ses(request);
 	// Preventing race conditions in threads
+
+	if (tokens[1])
+		files = file_handler(tokens[1]);
+
 	pthread_mutex_lock(&lock);
 
-	file_handler(tokens[1]);
 	int stdout_fd = dup(STDOUT_FILENO);
 
 	dup2(conection_fd,STDOUT_FILENO);
 	system(tokens[0]);
 	fflush(stdout);
 
+	if (tokens[1])
+		free_pool(files,1);
 	// Like this ??
 	dup2(stdout_fd,STDOUT_FILENO);
 

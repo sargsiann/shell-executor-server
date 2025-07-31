@@ -27,7 +27,7 @@ t_queue *get_from_pool(t_queue **head) ;
 void	print_pool(t_queue **head);
 char	*string_reallocator(char *old_message,char *buffer) ;
 char	**parser_ses(char *message) ;
-t_queue	*file_handler(char *files) ;
+t_queue	**file_handler(char *files) ;
 void	free_pool(t_queue **head,int flag);
 char	*get_substr(char *from,char *to) ;
 
