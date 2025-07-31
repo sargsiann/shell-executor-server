@@ -16,7 +16,6 @@ void	add_to_pool(t_queue **pool_head,int *connection_fd)
 		*pool_head = member;
 		return ;
 	}
-
 	t_queue *tmp = *pool_head;
 	// Going to the last member
 	while (tmp->next)
@@ -41,4 +40,23 @@ t_queue *get_from_pool(t_queue **head)
 	returning_member->next = NULL;
 
 	return returning_member;
+}
+
+void	free_pool(t_queue **head, int flag) 
+{
+	if (!head)
+		return ;
+	t_queue *tmp = *head;
+	t_queue	*freeable = tmp;
+
+	while (tmp)
+	{
+		tmp = tmp->next;
+		// In case of wee also need close file dp
+		if (flag)
+			close(*(freeable->connection_fd));
+		free(freeable);
+		freeable = tmp;
+	}
+	free(head);
 }

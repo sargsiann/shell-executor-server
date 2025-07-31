@@ -12,9 +12,6 @@ pthread_cond_t cond;
 // The head of pool
 t_queue **pool_head;
 
-// Wee need reallocator (will read by 1kb each time and if needed realloc our main message for that)
-
-
 // Message : handler (buffer maybe realloced each time if the message is big)
 /*
 	Getting the part of command runing to pass it through validator
@@ -26,12 +23,6 @@ t_queue **pool_head;
 	Find the liine for file information
 	If there is read it creating and starting to listen file information
 	after close fd s
-*/
-
-// Executer function 
-/*
-	Execute via the system()
-	after call clean all files for cleaning client files from machine
 */
 
 // Validator function 
@@ -49,7 +40,7 @@ void	heap_checker(char *message)
 
 // Fucntion for handleing ses request
 
-char	*handle_request_ses(char *request) 
+char	*handle_request_ses(char *request, int conection_fd) 
 {
 	// Result for sending back
 	char	*result;
@@ -61,7 +52,25 @@ char	*handle_request_ses(char *request)
 		result = "Error : Request must start with <|COMMAND|>";
 		return result;
 	}
+
 	tokens = parser_ses(request);
+	// Preventing race conditions in threads
+	pthread_mutex_lock(&lock);
+
+	file_handler(tokens[1]);
+	int stdout_fd = dup(STDOUT_FILENO);
+
+	dup2(conection_fd,STDOUT_FILENO);
+	system(tokens[0]);
+	fflush(stdout);
+
+	// Like this ??
+	dup2(stdout_fd,STDOUT_FILENO);
+
+	// Whyyyy ??
+	close(stdout_fd);
+	fflush(stdout);
+	pthread_mutex_unlock(&lock);
 }
 
 void *hanlde_echo(void *data) 
@@ -115,7 +124,8 @@ void *hanlde_echo(void *data)
 			free(node_to_handle);
 
 			// And the whole message from client
-			free(message);
+			if (message)
+			 	free(message);
 			node_to_handle = NULL;
 			// And continue to listen not break from the loop
 			continue;
@@ -127,15 +137,10 @@ void *hanlde_echo(void *data)
 
 		// If we got that <|END|> keyword that means that we got to the end
 		if (strstr(message,"<|END|>")) {
-			response = handle_request_ses(message);
+			response = handle_request_ses(message,*(node_to_handle->connection_fd));
 			free(message);
+			message = NULL;
 		}
-
-		// Sending back the message
-        if (send(*(node_to_handle->connection_fd), buffer, strlen(buffer), 0) == -1) {
-            perror("Send Error :");
-            break;
-        }
     }
 }
 

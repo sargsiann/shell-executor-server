@@ -5,11 +5,13 @@ Ses Protocol request FORM :
 _____________________________________________________________________
 The Request Should contain this FORM at this version
 								(Files cannot be)
-(X) <|COMMAND|> : The Commands <|FILES|> <|>FILE1,FILE1_SIZE(IN BYTES),FILE1_CONTENT<|>, <|>FILEN ,FILEN_SIZE,FILEN_CONTENT<|> <|END|>
+(X) <|COMMAND|> : The Commands <|FILES|> <|>FILE1,,"FILE1_CONTENT"<|>, <|>FILEN ,FILEN_CONTENT<|> <|END|>
 
 (X) THE <|COMMAND|> <|FILES|> <|END|> <|> WORDS ARE RESERVED SO USING IT MESSAGES, IN BRACES, IN FILES
 CAN LEAD TO UNDEFINED BEHAVIOUR AT THIS MOMENT DUE TO PARSING TIME SHORTNESS
+
 (X) ANY SYMBOL AFTER THE <|END|> WILL NOT EVEN CONSIDERED AND WILL LOST
+(X) THE FILE CONTENT MUST BE IN DOUBLE QUOTES FILE_NAME, AND FILE BYTES MUST NOT BE QUOTES
 _____________________________________________________________________
 
 

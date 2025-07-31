@@ -38,3 +38,14 @@ char	*string_reallocator(char *old_message,char *buffer)
 	strcpy(new_message + old_message_len, buffer);
 	return new_message;
 }
+
+char	*get_substr(char *from,char *to) 
+{
+	if (!from || !to)
+		return (NULL);
+	int		len = to - from + 1;
+	char	*res = malloc(len);
+	memset(res,0,len);
+	strncpy(res,from,len - 1);
+	return res;
+}

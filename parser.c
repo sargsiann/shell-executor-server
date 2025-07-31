@@ -4,7 +4,7 @@
 char	*get_token(char *request, short member) 
 {
 	char	*command_idx = strstr(request, "<|COMMAND|>");
-	char	*file_idx = strstr(request, "<|FILE|>");
+	char	*file_idx = strstr(request, "<|FILES|>");
 	char	*end_idx = strstr(request, "<|END|>");
 
 	// For commands starting from one char affter COMMAND so dy for FILE if file
@@ -21,7 +21,6 @@ char	*get_token(char *request, short member)
 	return token;
 }
 
-
 char	**parser_ses(char *message) 
 {
 	if (!message) 
@@ -35,11 +34,11 @@ char	**parser_ses(char *message)
 	// Getting the index for splitting to command part and to file part
 
 	commands = get_token(message, 0);
-	if (!strstr(message,"<|FILE|>"))
+	if (!strstr(message,"<|FILES|>"))
 		files = NULL;
 	else
 		files = get_token(message,1);
 	tokens[0] = commands;
 	tokens[1] = files;
-	fflush(stdout);
+	return tokens;
 }
