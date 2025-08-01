@@ -48,20 +48,20 @@ char	*handle_request_ses(char *request, int conection_fd)
 		files = file_handler(tokens[1]);
 	
 	validator(tokens);
-	// pthread_mutex_lock(&lock);
-	// int stdout_fd = dup(STDOUT_FILENO);
-	// dup2(conection_fd,STDOUT_FILENO);
-	// int status = system(tokens[0]);
-	// // Like this ??
-	// dup2(stdout_fd,STDOUT_FILENO);
-	// // Whyyyy ??
-	// close(stdout_fd);
-	// if (tokens[1]) {
-	// 	free_pool(files,1);
-	// 	files = NULL;
-	// }
-	// tokens = NULL;
-	// pthread_mutex_unlock(&lock);
+	pthread_mutex_lock(&lock);
+	int stdout_fd = dup(STDOUT_FILENO);
+	dup2(conection_fd,STDOUT_FILENO);
+	int status = system(tokens[0]);
+	// Like this ??
+	dup2(stdout_fd,STDOUT_FILENO);
+	// Whyyyy ??
+	close(stdout_fd);
+	if (tokens[1]) {
+		free_pool(files,1);
+		files = NULL;
+	}
+	tokens = NULL;
+	pthread_mutex_unlock(&lock);
 }
 
 void *hanlde_echo(void *data) 

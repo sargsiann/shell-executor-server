@@ -9,6 +9,7 @@ void	tokens_definer(t_token **head);
 t_token **get_token_commands(char *commands) 
 {
 	t_token **head = malloc(sizeof(t_token *));
+	*head = NULL;
 	char	*tok_start;
 	char	*tok_end;
 	char	*token_name;
@@ -29,7 +30,6 @@ t_token **get_token_commands(char *commands)
 			// If we got quotes
 			if (*tok_end == 39 || *tok_end == 34) {
 				quote_type = *tok_end;
-
 				tok_end++;
 				// Forwarding on ignoreing spaces
 				while (*tok_end && *tok_end != quote_type)
@@ -57,10 +57,8 @@ int	token_definer(t_token **token, int prev_type) {
 	t_token *t = *token;
 	// In case of operators
 
-	printf("%d\n",prev_type);
 	fflush(stdout);
-	if (!strcmp(t->token_name,"||") || !strcmp(t->token_name,"|") 
-	||!strcmp(t->token_name,"&&") || !strcmp(t->token_name,";")) {
+	if (is_operator(t)) {
 		t->token_type = 2;
 		return 2;
 	}
@@ -100,20 +98,21 @@ void	tokens_definer(t_token **head)
 			break;
 		prev_type = token_definer(&tmp,prev_type);
 	}
-	print_tokens(head);
+	// print_tokens(head);
 }
 
-// Another one will stand for files ..
-t_token	**get_files_token() 
-{
+// // Another one will stand for files ..
+// t_token	**get_files_token() 
+// {
 
-}
+// }
 
 void	add_token(t_token **head, char *name) 
 {
+	if (!head)
+		return;
 	t_token *new = malloc(sizeof(t_token ));
 	new->token_name = name;
-	// Undefined at creating moment
 	new->token_type = 0;
 	new->next = NULL;
 
@@ -130,22 +129,27 @@ void	add_token(t_token **head, char *name)
 	tmp->next = new;
 }
 
-void	free_tokens(t_token **head) 
+void free_tokens(t_token **head) 
 {
-	if (!head)
-		return ;
+	if (!head || !*head)
+		return;
+
 	t_token *tmp = *head;
 	t_token *to_free;
-	// Prints for debugg
+
 	while (tmp)
 	{
 		to_free = tmp;
 		tmp = tmp->next;
-		free(to_free->token_name);
-		free(to_free->token_name);
+
+		if (to_free->token_name)
+			free(to_free->token_name);
+
+		free(to_free);
 	}
-	free(head);
+	// free(head); // Free the pointer to the head (if dynamically allocated)
 }
+
 
 void	print_tokens(t_token **head) 
 {

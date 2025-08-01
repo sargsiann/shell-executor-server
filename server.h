@@ -54,4 +54,6 @@ void	print_tokens(t_token **head) ;
 // Validator
 char	*validator(char **tokens);
 bool	is_space(char a) ;
+bool	is_operator(t_token *t) ;
+
 #endif

@@ -46,7 +46,7 @@ char	*get_substr(char *from,char *to)
 	int		len = to - from + 1;
 
 	char	*res = malloc(len + 1);
-	memset(res,0,len);
+	memset(res,0,len + 1);
 	strncpy(res,from,len);
 	return res;
 }
@@ -54,4 +54,16 @@ char	*get_substr(char *from,char *to)
 bool	is_space(char a) 
 {
 	return ((a >= 8 && a <= 13) || a == 32);
+}
+bool	is_operator(t_token *t) 
+{
+	if (!strcmp(t->token_name,"||") || !strcmp(t->token_name,"|") 
+	||!strcmp(t->token_name,"&&") || !strcmp(t->token_name,";")
+	|| !strcmp(t->token_name,"&")  
+	|| !strcmp(t->token_name,">") || !strcmp(t->token_name,"<<")
+	|| !strcmp(t->token_name,"<") || !strcmp(t->token_name,"`")
+	|| !strcmp(t->token_name,"2>") || !strcmp(t->token_name,"!")) {
+		return true;
+	}
+	return false;
 }
