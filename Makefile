@@ -4,7 +4,7 @@ SERVER = server
 
 CC = gcc
 
-OTHERS_SRC = thread_pool.c utils.c parser.c file_handler.c validator.c
+OTHERS_SRC = thread_pool.c utils.c parser.c file_handler.c validator.c tokenizer.c
 SV_SRC = server.c
 
 SERVER_OBJ = $(SV_SRC:.c=.o)

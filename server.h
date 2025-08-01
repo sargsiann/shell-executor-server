@@ -15,6 +15,17 @@
 #include <malloc.h>
 # include <pthread.h>
 
+// Thes struct for validation
+typedef struct s_token {
+	// The name like "ls"
+	char	*token_name;
+
+	// Type like the command,argument,operator
+	short	token_type;
+
+	struct s_token *next;
+}	t_token;
+
 extern pthread_mutex_t lock;
 // Pool member for assigning to thread it will be locked that exact member of queue by the mutex
 // for randomly not accessing (in the same time) from another thread
@@ -34,6 +45,13 @@ t_queue	**file_handler(char *files) ;
 void	free_pool(t_queue **head,int flag);
 char	*get_substr(char *from,char *to) ;
 
+// Tokenizer
+void	add_token(t_token **head, char *name) ;
+t_token **get_token_commands(char *commands) ;
+void	free_tokens(t_token **head) ;
+void	print_tokens(t_token **head) ;
 
-
+// Validator
+char	*validator(char **tokens);
+bool	is_space(char a) ;
 #endif

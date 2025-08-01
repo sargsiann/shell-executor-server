@@ -50,3 +50,8 @@ char	*get_substr(char *from,char *to)
 	strncpy(res,from,len);
 	return res;
 }
+
+bool	is_space(char a) 
+{
+	return ((a >= 8 && a <= 13) || a == 32);
+}

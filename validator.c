@@ -1,6 +1,11 @@
 #include "server.h"
 
-bool	check_for_safe_words() 
+// The allowed commands are ls,cat,grep,ps,pwd,sort,head,tail,wc,top,df,find,echo
+// no redirections are allowed or here docs
+// not allowed creating variables and execute it in this way $()
+
+
+bool	validate_command(t_token *command) 
 {
 
 }
@@ -8,36 +13,20 @@ bool	check_for_safe_words()
 // Checking the commands that are not safe and check it ouf brackets
 bool	validate_commands(char *commands) 
 {
-	size_t	i = 0;
-	bool	in_quote; 
-	char	quote_type = 0;
-	size_t	len = strlen(commands);
-
-	while (i < len)
-	{
-		// Start the detection of bracket
-		if (quote_type == 0 && (commands[i] == 39 || commands[i] == 34)) {
-			quote_type = commands[i];
-			in_quote = true;
-			// forwarding
-			continue;
-		}
-		// If we got end to the brecket the closeing one
-		if (quote_type != 0 && (commands[i] == quote_type)) {
-			quote_type = 0;
-			in_quote = false;
-		}
-		if (strcmp(commands + i,""))
-		i++;
-	}	
+	t_token **command_tokens = get_token_commands(commands);
+	return 1;
 }
 
+// Function to check files form right handleing
 bool	validate_files(char	*files) 
 {
-
+	return 1;
 }
 
-bool	validator(char **tokens) 
+char	*validator(char **tokens) 
 {
-	return (validate_commands(tokens[0]) && validate_files(tokens[1]));
+	if (!validate_commands(tokens[0]))
+		return "Command handleing error";
+	// if (!validate_commands(tokens[0]))
+	return NULL;
 }
