@@ -152,11 +152,6 @@ bool	validate_commands(char *commands)
 	return true;
 }
 
-// Function to check files form right handleing
-bool	validate_files(char	*files) 
-{
-	return 1;
-}
 
 char	*validator(char *commands, char *files) 
 {

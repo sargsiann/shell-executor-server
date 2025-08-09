@@ -95,9 +95,6 @@ t_token **get_token_commands(char *commands)
 	}
 	// After defining each token giving its type
 	tokens_definer(head);
-	printf("\n\n\n");
-	print_tokens(head);
-	printf("\n\n\n");
 	return head;
 }
 

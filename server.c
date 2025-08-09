@@ -20,8 +20,10 @@ void	exec_command(char *command, int sock_fd)
 	dup2(sock_fd,STDOUT_FILENO);
 	int status = system(command);
 	while (1) {
-		if (difftime(time(NULL), start_time) > 5) {
-			kill(0, SIGTERM);
+		if (WIFEXITED(status)) {
+			int exit_status = WEXITSTATUS(status);
+			// Handle the exit status as needed
+			break;
 		}
 	}
 	dup2(stdout_copy,STDOUT_FILENO);
@@ -96,11 +98,25 @@ t_files	**create_files(char *files)
 		if (coma) {
 			file_name = substr(token,coma);
 			file_content = substr(coma + 1,token + strlen(token));
+			// Error case no file names
+			if (!file_name)
+			{
+				free_files_list(files_list);
+				files_list = NULL;
+				return NULL;
+			}
 			create_file(file_name,file_content);
 			add_file(files_list,file_name);
 			if (file_content)
 				free(file_content);
 			file_content = NULL;
+		}
+		// Error case no comma in sending
+		if (!coma)
+		{
+			free_files_list(files_list);
+			files_list = NULL;
+			return NULL;
 		}
         token = strtok(NULL,"<>");
 	}
@@ -186,7 +202,9 @@ void	*connection_handle(void	*data)
 	int		receveid_bytes;
 
 	char	*all_message = NULL;
-
+	char	*command = NULL;
+	char	*files = NULL;
+	t_files **files_list = NULL;
 	while (1)
 	{
 		// Setting our buffer to 0 s
@@ -217,28 +235,33 @@ void	*connection_handle(void	*data)
 		if (strstr(all_message,"<END>"))
 		{
 			pthread_mutex_lock(&atomic_lock);
-			t_files **files_list = NULL;
-			char	*command = get_command(all_message);
-			char	*files = get_files_section(all_message);
+			files_list = NULL;
+			command = get_command(all_message);
+			files = get_files_section(all_message);
+			files_list = create_files(files);
 
-			if (validator(command,files))
+			// print_files_list(*files_list);
+			// fprintf(stderr,"%s",files);
+			// Sending error and freeing
+			if (validator(command,files) || (files != NULL && files_list == NULL)) {
 				send(connection_fd,"inValid❌\n",12,0);
-			else
-				send(connection_fd,"Valid✅\n",10,0);
-			// files_list = create_files(files);
-			exec_command(command,connection_fd);
+			}
+			else {
+				exec_command(command,connection_fd);
+			}
+			// After freeing all
 			if (files)
 				free(files);
 			if (command)
 				free(command);
 			if (all_message)
 				free(all_message);
-			// if (files_list && *files_list)
-			// 	free_files_list(files_list);
+			if (files_list && *files_list)
+				free_files_list(files_list);
 			command = NULL;
 			files = NULL;
 			all_message = NULL;
-			// files_list = NULL;
+			files_list = NULL;
 			pthread_mutex_unlock(&atomic_lock);
 		}
 		if (shutdown_threads)
