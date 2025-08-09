@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build server",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-g",
+        "*.c",
+        "-o",
+        "server",
+        "-lpthread"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

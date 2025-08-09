@@ -1,8 +1,9 @@
 {
-	"C_Cpp.errorSquiggles": "enabledIfIncludesResolve",
+	"C_Cpp.errorSquiggles": "disabled",
 	"files.associations": {
 		"server.h": "c",
 		"pthread.h": "c",
-		"fcntl.h": "c"
+		"fcntl.h": "c",
+		"typeinfo": "c"
 	}
 }

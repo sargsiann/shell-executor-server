@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Each entry: "command|expected"
+# expected = VALID or INVALID
+complex_commands=(
+    "ls -l && echo success || echo fail|VALID"
+    "pwd; whoami; id|VALID"
+    "echo start && ls /nonexistent_dir || echo fallback|VALID"
+    "grep something testfile && echo found || echo notfound|VALID"
+
+    "cat testfile | grep 'pattern' | sort | head -n 3|VALID"
+    "cat testfile | less|VALID"
+
+    "rm -rf /tmp/something|INVALID"
+    "mkdir newdir && cd newdir || echo fail|INVALID"
+    "echo hello && sudo reboot|INVALID"
+
+    "| ls|INVALID"
+    "ls | | grep|INVALID"
+    "ls &&& echo oops|INVALID"
+    "ls ||| grep|INVALID"
+    "ls ;| pwd|INVALID"
+    "&& ls|INVALID"
+    "ls ; ; pwd|INVALID"
+    "ls &&  && pwd|INVALID"
+    "ls |VALID"
+
+    "ls > output.txt|INVALID"
+    "cat < input.txt|INVALID"
+    "echo hello >> append.txt|INVALID"
+    "grep pattern file 2> error.log|INVALID"
+    "sort < input.txt > output.txt|INVALID"
+    "wc -l < input.txt|INVALID"
+
+    $'cat << EOF\nHello\nEOF|INVALID'
+    $'grep pattern <<END\nline1\nline2\nEND|INVALID'
+
+    "echo 'single quoted string'|VALID"
+    "echo \"double quoted string\"|VALID"
+    "echo \"mix 'single inside double' quotes\"|VALID"
+    "echo 'mix \"double inside single\" quotes'|VALID"
+    "echo 'string with space and special ; char'|VALID"
+    "grep 'pattern with spaces' testfile|VALID"
+    "grep \"pattern with ; &&  testfile|VALID"
+    "echo \"escaped quote: \\\"inside\\\"\"|VALID"
+    "echo 'escaped quote: \\'inside\\''|VALID"
+    "echo \"multi-line\nwith quotes\"|VALID"
+)
+
+echo "Testing complex commands with expected results:"
+
+for entry in "${complex_commands[@]}"; do
+    cmd="${entry%%|*}"         # Text before '|'
+    expected="${entry##*|}"    # Text after '|'
+    
+    echo "--------------------------------"
+    echo "Command: $cmd"
+    echo "Expected: $expected"
+
+    {
+        echo "<COMMANDS>"
+        echo -e "$cmd"
+        echo "<END>"
+    } | nc -q 1 localhost 3490
+
+    if [[ "$expected" == "VALID" ]]; then
+        echo "✅ Should be valid"
+    else
+        echo "❌ Should be invalid"
+    fi
+done
