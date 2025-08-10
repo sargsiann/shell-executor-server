@@ -159,5 +159,6 @@ bool	validator(char *commands, char *files)
 {
 	if (!validate_commands(commands))
 		return false;
+	printf("Commands are valid ✅\n");
 	return true;
 }

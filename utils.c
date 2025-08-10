@@ -1,6 +1,5 @@
 #include "server.h"
 
-
 void	create_file(char *file_name,char *content) 
 {
 	int	fd = open(file_name,O_CREAT | O_RDWR | O_TRUNC,0644);
@@ -32,8 +31,8 @@ void setup_signal_handler() {
 }
 
 // File creating
-t_files	**create_files(char *files) 
-{
+t_files	**create_files(char *files)  {
+	printf("%s",files);
 	if (!files)
 		return NULL;
 	// ALWAYS WHEN DOUBLE POINTER INIT NULL ITS VALUE ALWAYS TWO DAYS ERRORORORRS
@@ -53,6 +52,7 @@ t_files	**create_files(char *files)
 			continue;
 		}
 		coma = strchr(token,',');
+		printf("Token: %s\n",token);
 		if (coma) {
 			file_name = substr(token,coma);
 			file_content = substr(coma + 1,token + strlen(token));

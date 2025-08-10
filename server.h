@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 typedef struct sockaddr SA;
 

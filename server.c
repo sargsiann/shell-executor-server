@@ -12,19 +12,14 @@ pthread_t	threads[THREADS_FOR_SERVE];
 
 char	*substr(char *start, char *end);
 
+// AS CHAT GPT SAIS IN SIGNAL HANDLER FUNCTIONS WE ONLY NEED TO HANDLE ASYNCHRON FUNCTIONS 
+// NOTHING LIKE PTHREAD_JOIN
 void	handle_sigint(int sigint) {
 	// All threads got to end
 	shutdown_threads = true;
+	// Waking up all threads to see that shutdown flag is on and die
 	pthread_cond_broadcast(&queue_cond);
-	for (size_t i = 0; i < THREADS_FOR_SERVE; i++) {
-		pthread_join(threads[i],NULL);
-	}
-	// Destroying mutexes
-	pthread_mutex_destroy(&queue_lock);
-	pthread_mutex_destroy(&atomic_lock);
-	pthread_cond_destroy(&queue_cond);
-	free_queue(clients);
-	exit(0);
+	
 }
 
 void	exec_command(char *command, int sock_fd) 
@@ -43,7 +38,7 @@ void	exec_command(char *command, int sock_fd)
         // Timeout check
         if (time(NULL) - start > 5) {
             send(sock_fd, "Timeout❌\n", 11, 0);
-            break;           // Done
+            break;       // Done
         }
         
         if (send(sock_fd, buffer, strlen(buffer), 0) == -1) {
@@ -70,13 +65,24 @@ void	*connection_handle(void	*data)
 	char	*command = NULL;
 	char	*files = NULL;
 	t_files **files_list = NULL;
+
 	while (1)
 	{
 		// Setting our buffer to 0 s
 		memset(&buff,0,sizeof(buff));
 
 		receveid_bytes = recv(connection_fd,&buff,BUFFER_SIZE,0);
-		// Error case
+		// In we got no message butt error is waiting in timeout
+		if (receveid_bytes == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+			// We check if shutdown is requested
+			if (shutdown_threads) {
+				fprintf(stderr, "Closing connection for client %d\n", connection_fd);
+				pthread_t id = pthread_self();
+				fflush(stdout);
+				return NULL;
+			}
+			continue;
+		}
 		if(receveid_bytes == -1) {
 			free(all_message);
 			perror("Recv error :");
@@ -93,9 +99,7 @@ void	*connection_handle(void	*data)
 			fflush(stdout);
 			return NULL;
 		}
-
 		all_message = str_realloc(all_message,buff);
-
 		// If we have got end to request
 		if (strstr(all_message,"<END>"))
 		{
@@ -104,8 +108,7 @@ void	*connection_handle(void	*data)
 			command = get_command(all_message);
 			files = get_files_section(all_message);
 			files_list = create_files(files);
-			
-			if (!validator(command,files) || (files !=  NULL && files_list == NULL) ) {
+			if (!validator(command,files) ) {
 				send(connection_fd,"inValid❌\n",12,0);
 			}
 			else {
@@ -126,12 +129,7 @@ void	*connection_handle(void	*data)
 			files_list = NULL;
 			pthread_mutex_unlock(&atomic_lock);
 		}
-		if (shutdown_threads) {
-			pthread_t id = pthread_self();
-			printf("Shutting down thread %lu\n",id);
-			fflush(stdout);
-			return NULL;
-		}
+		
 	}
 }
 
@@ -148,19 +146,12 @@ void	*thread_logic(void	*arguments)
 		}
 		pthread_mutex_unlock(&queue_lock);
 
-		if (shutdown_threads) {
-			// Clean up and exit thread
-			if (client_to_serve) {
-				free(client_to_serve);
-				client_to_serve = NULL;
-			}
-			return NULL;
-		}
 		if (shutdown_threads)
 		{
 			if (client_to_serve) {
 				free(client_to_serve);
 				client_to_serve = NULL;
+				close(client_to_serve->c_socket_fd);
 			}
 			return NULL;
 		}
@@ -238,16 +229,34 @@ int main()
 		// Accept stops programm until the connection,-1 if failed speccialy for errors		
 		client_fd = accept(sock_fd,NULL,NULL);
 		if (client_fd == -1) {
-			perror("Accepting connection Error :");
+			 if (errno == EINTR) {
+				break;
+            }
 			exit(1);
 		}
 
 		// Adding from acceptor thread to clients using mutex to prev race conditions
 		pthread_mutex_lock(&queue_lock);
+		int flags = fcntl(client_fd, F_GETFL, 0);
+    	fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
 		add_client_to_serve(client_fd,clients);
 		// Sending signal to one of waiting threads
 		pthread_cond_signal(&queue_cond);
 		pthread_mutex_unlock(&queue_lock);
+		// If we got shutdown threads not accepting
+		if (shutdown_threads)
+			break;
+	}
 
-	}	
+	// After clearing
+	// Joining all threads
+	for (size_t i = 0; i < THREADS_FOR_SERVE; i++) {
+		pthread_join(threads[i],NULL);
+	}
+	// Destroying mutexes
+	pthread_mutex_destroy(&queue_lock);
+	pthread_mutex_destroy(&atomic_lock);
+	pthread_cond_destroy(&queue_cond);
+	free_queue(clients);
+	exit(0);
 }
