@@ -55,6 +55,7 @@ void	*connection_handle(void	*data)
 	// Connection fd getting
 	int		connection_fd = client_data->c_socket_fd;
 
+	
 	// Buffer for getting messages
 	char	buff[BUFFER_SIZE];
 
@@ -78,7 +79,8 @@ void	*connection_handle(void	*data)
 			if (shutdown_threads) {
 				fprintf(stderr, "Closing connection for client %d\n", connection_fd);
 				pthread_t id = pthread_self();
-				fflush(stdout);
+				if (all_message)
+					free(all_message);				
 				return NULL;
 			}
 			continue;
@@ -114,7 +116,6 @@ void	*connection_handle(void	*data)
 			else {
 				exec_command(command,connection_fd);
 			}
-			// After freeing all
 			if (files)
 				free(files);
 			if (command)
@@ -146,12 +147,14 @@ void	*thread_logic(void	*arguments)
 		}
 		pthread_mutex_unlock(&queue_lock);
 
+		// If we have less space in stack due to some problems
+		printf("%ld\n", get_stack_usage());
 		if (shutdown_threads)
 		{
 			if (client_to_serve) {
+				close(client_to_serve->c_socket_fd);
 				free(client_to_serve);
 				client_to_serve = NULL;
-				close(client_to_serve->c_socket_fd);
 			}
 			return NULL;
 		}
@@ -237,6 +240,7 @@ int main()
 
 		// Adding from acceptor thread to clients using mutex to prev race conditions
 		pthread_mutex_lock(&queue_lock);
+		// Making non blocking to not block programm
 		int flags = fcntl(client_fd, F_GETFL, 0);
     	fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
 		add_client_to_serve(client_fd,clients);

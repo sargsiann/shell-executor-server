@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <errno.h>
+ #include <sys/resource.h>
 
 typedef struct sockaddr SA;
 
@@ -65,6 +66,6 @@ t_files	**create_files(char *files);
 void	setup_signal_handler();
 void	exec_command(char *command, int sock_fd) ;
 void	handle_sigint(int sigint) ;
-
+size_t	get_stack_usage(void);
 
 #endif

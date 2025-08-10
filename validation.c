@@ -27,7 +27,7 @@
 
 bool	is_allowed(char	*command) {
 	char *allowed[] = {"ls", "cat", "grep", "ps", "pwd", "sort", "head", "tail", "wc", "top", "df", "echo",
-			"whoami", "id", "uptime", "date", "file", "stat", "du", "more", "less", NULL};
+			"whoami", "id", "uptime", "date", "file", "stat", "du", "more", "yes", "less", NULL};
 
 	int	i = 0;
 
@@ -37,10 +37,7 @@ bool	is_allowed(char	*command) {
 	{
 
 		if (strcmp(allowed[i],command) == 0) 
-		{
-			printf("Found allowed command: %s\n", command);
 			return true;
-		}
 		i++;
 	}
 	return false;
@@ -159,6 +156,10 @@ bool	validator(char *commands, char *files)
 {
 	if (!validate_commands(commands))
 		return false;
-	printf("Commands are valid ✅\n");
 	return true;
+}
+
+bool	memory_checker() 
+{
+	
 }

@@ -32,7 +32,6 @@ void setup_signal_handler() {
 
 // File creating
 t_files	**create_files(char *files)  {
-	printf("%s",files);
 	if (!files)
 		return NULL;
 	// ALWAYS WHEN DOUBLE POINTER INIT NULL ITS VALUE ALWAYS TWO DAYS ERRORORORRS
@@ -52,7 +51,6 @@ t_files	**create_files(char *files)  {
 			continue;
 		}
 		coma = strchr(token,',');
-		printf("Token: %s\n",token);
 		if (coma) {
 			file_name = substr(token,coma);
 			file_content = substr(coma + 1,token + strlen(token));
@@ -69,9 +67,10 @@ t_files	**create_files(char *files)  {
 				free(file_content);
 			file_content = NULL;
 		}
-		// Error case no comma in sending
-		if (!coma)
+		// Error case no comma in sending "\n" 
+		if (!coma && strcmp(token,"\n"))
 		{
+			fprintf(stderr,"Error: No file name found in token: [%s]\n", token);
 			free_files_list(files_list);
 			files_list = NULL;
 			return NULL;
