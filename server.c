@@ -5,191 +5,56 @@ static bool	shutdown_threads = false;
 
 t_cinfo	**clients;
 pthread_mutex_t queue_lock;
-
+pthread_cond_t  queue_cond;
 pthread_mutex_t atomic_lock;
 // Our threads for serving array
 pthread_t	threads[THREADS_FOR_SERVE];
 
 char	*substr(char *start, char *end);
 
-void	exec_command(char *command, int sock_fd) 
-{
-	// Locking file descriptors to avoid overwriting each results
-	time_t start_time = time(NULL);
-	int	stdout_copy = dup(STDOUT_FILENO);
-	dup2(sock_fd,STDOUT_FILENO);
-	int status = system(command);
-	while (1) {
-		if (WIFEXITED(status)) {
-			int exit_status = WEXITSTATUS(status);
-			// Handle the exit status as needed
-			break;
-		}
-	}
-	dup2(stdout_copy,STDOUT_FILENO);
-	close(stdout_copy);
-}
-
 void	handle_sigint(int sigint) {
 	// All threads got to end
 	shutdown_threads = true;
+	pthread_cond_broadcast(&queue_cond);
 	for (size_t i = 0; i < THREADS_FOR_SERVE; i++) {
 		pthread_join(threads[i],NULL);
 	}
 	// Destroying mutexes
 	pthread_mutex_destroy(&queue_lock);
 	pthread_mutex_destroy(&atomic_lock);
+	pthread_cond_destroy(&queue_cond);
 	free_queue(clients);
 	exit(0);
 }
 
-void setup_signal_handler() {
-	// Struct for handler
-    struct sigaction sa;
-	// Handler function name
-    sa.sa_handler = handle_sigint;
-	// Getting other signals too not blocking it
-    sigemptyset(&sa.sa_mask);
-	// For breaking all sys cakks (in our case accept) for right handleing of closeing our programm
-	sa.sa_flags = 0; 
-	// Putting struct to SIGINT for handleing
-    sigaction(SIGINT, &sa, NULL);
-}
-
-void	create_file(char *file_name,char *content) 
+void	exec_command(char *command, int sock_fd) 
 {
-	int	fd = open(file_name,O_CREAT | O_RDWR | O_TRUNC,0644);
-	if (fd == -1) {
-		perror("File creating error :");
-		return ;
-	}
-	// Writing content to file
-	if (write(fd,content,strlen(content)) == -1) {
-		perror("Writing to file error :");
-		close(fd);
-		return ;
-	}
-	
-	close(fd);
-}
-
-// File creating
-t_files	**create_files(char *files) 
-{
-	// ALWAYS WHEN DOUBLE POINTER INIT NULL ITS VALUE ALWAYS TWO DAYS ERRORORORRS
-	t_files **files_list = malloc(sizeof(t_files *));
-	files_list[0] = NULL; // Initialize the head of the list to NULL
-	if (!files)
-		return NULL;
-
-	// Files for lock one for strtok and also file creating and writing
-	char	*token = strtok(files,"<>");
-	char	*file_name = NULL;
-	char	*file_content = NULL;
-	char	*coma = NULL;
-
-	while (token != NULL)
-	{	
-		if (token[0] == 0) {
-			token = strtok(NULL,"<>");
-			continue;
-		}
-		coma = strchr(token,',');
-		if (coma) {
-			file_name = substr(token,coma);
-			file_content = substr(coma + 1,token + strlen(token));
-			// Error case no file names
-			if (!file_name)
-			{
-				free_files_list(files_list);
-				files_list = NULL;
-				return NULL;
-			}
-			create_file(file_name,file_content);
-			add_file(files_list,file_name);
-			if (file_content)
-				free(file_content);
-			file_content = NULL;
-		}
-		// Error case no comma in sending
-		if (!coma)
-		{
-			free_files_list(files_list);
-			files_list = NULL;
-			return NULL;
-		}
-        token = strtok(NULL,"<>");
-	}
-	return files_list;
-}
-
-
-char	*str_realloc(char *old, char *new) 
-{
-	char	*final;
-
-	size_t	ol = 0;
-	size_t	nl = 0;
-	size_t	len = 0;
-	if (old)
-		ol = strlen(old);
-	if (new)
-		nl = strlen(new);
-	len = ol + nl + 1;
-	final = malloc(len);
-	memset(final,0,len);
-	if (old)
-		strcpy(final,old);
-	if (new)
-		strcpy(final + ol,new);
-	free(old);
-	old = NULL;
-	return final;
-}
-
-char	*substr(char *start, char *end) 
-{
-	if (!start || ! end || start >= end)
-		return NULL;
-	size_t len = end - start + 1;
-
-	char *sub = malloc(len);
-	memset(sub,0,len);
-	strncpy(sub,start,len - 1);
-	return sub;
-}
-
-char	*get_command(char	*all_message) 
-{
-	// If the command tag is not in first
-	if (strstr(all_message,"<COMMANDS>") - all_message != 0)
-		return NULL;
-	char	*files = strstr(all_message,"<FILES>");
-	char	*end = strstr(all_message,"<END>");
-	if (!end && !files)
-		return NULL;
-	char	*end_of_commands = files != NULL ? files : end;
-	char	*command = substr(all_message + 10, end_of_commands);
-	return command;
-}
-
-char	*get_files_section(char *all_message) 
-{
-	char	*files = NULL;
-	char	*start = strstr(all_message,"<FILES>");
-
-	if (!start)
-		return NULL;
-	char	*end = strstr(all_message,"<END>");
-
-	files = substr(start + 8,end);
-	return files;
+	// Start of execution
+    time_t start = time(NULL);
+	// Getting pipe for reading the result of execution from that 
+    FILE *fp = popen(command, "r");
+	// Reading to buffer
+    char buffer[1024];
+    
+    if (!fp) return;
+    
+	// While we getting results
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        // Timeout check
+        if (time(NULL) - start > 5) {
+            send(sock_fd, "Timeout❌\n", 11, 0);
+            break;           // Done
+        }
+        
+        if (send(sock_fd, buffer, strlen(buffer), 0) == -1) {
+            break;  // Connection already closed by client
+        }
+    }
+    pclose(fp);  // Command dies
 }
 
 void	*connection_handle(void	*data)
 {
-	// Fucntion for signlas
-	signal(SIGINT,handle_sigint);
 	// Casting data to our type
 	t_cinfo *client_data = (t_cinfo *)data;
 	// Connection fd getting
@@ -239,16 +104,13 @@ void	*connection_handle(void	*data)
 			command = get_command(all_message);
 			files = get_files_section(all_message);
 			files_list = create_files(files);
-
-			// print_files_list(*files_list);
-			// fprintf(stderr,"%s",files);
-			// Sending error and freeing
-			if (validator(command,files) || (files != NULL && files_list == NULL)) {
-				send(connection_fd,"inValid❌\n",12,0);
-			}
-			else {
+			
+			// if (!validator(command,files) || (files !=  NULL && files_list == NULL) ) {
+			// 	send(connection_fd,"inValid❌\n",12,0);
+			// }
+			// else {
 				exec_command(command,connection_fd);
-			}
+			// }
 			// After freeing all
 			if (files)
 				free(files);
@@ -256,7 +118,7 @@ void	*connection_handle(void	*data)
 				free(command);
 			if (all_message)
 				free(all_message);
-			if (files_list && *files_list)
+			if (files_list)
 				free_files_list(files_list);
 			command = NULL;
 			files = NULL;
@@ -264,8 +126,12 @@ void	*connection_handle(void	*data)
 			files_list = NULL;
 			pthread_mutex_unlock(&atomic_lock);
 		}
-		if (shutdown_threads)
+		if (shutdown_threads) {
+			pthread_t id = pthread_self();
+			printf("Shutting down thread %lu\n",id);
+			fflush(stdout);
 			return NULL;
+		}
 	}
 }
 
@@ -275,7 +141,21 @@ void	*thread_logic(void	*arguments)
 	t_cinfo *client_to_serve = NULL;
 	while (1)
 	{
-		// If we got shutdown variable changed so we exit the thread
+		pthread_mutex_lock(&queue_lock);
+		//  ?????????????????
+		while (!shutdown_threads && !(client_to_serve = get_client_to_serve(clients))) {
+			pthread_cond_wait(&queue_cond, &queue_lock);
+		}
+		pthread_mutex_unlock(&queue_lock);
+
+		if (shutdown_threads) {
+			// Clean up and exit thread
+			if (client_to_serve) {
+				free(client_to_serve);
+				client_to_serve = NULL;
+			}
+			return NULL;
+		}
 		if (shutdown_threads)
 		{
 			if (client_to_serve) {
@@ -283,19 +163,6 @@ void	*thread_logic(void	*arguments)
 				client_to_serve = NULL;
 			}
 			return NULL;
-		}
-		// If we have no one for serving
-		if (!client_to_serve) {
-			// Trying to get something from the queue maybe some appears
-			pthread_mutex_lock(&queue_lock);
-
-			client_to_serve = get_client_to_serve(clients);
-			
-			pthread_mutex_unlock(&queue_lock);
-
-			// If we got not client to serve continueing
-			if (!client_to_serve)
-				continue;
 		}
 		// Else
 		connection_handle(client_to_serve);
@@ -352,6 +219,7 @@ int main()
 	// Initing mutex BEFORE THREAD INTING TO AVOID USING IT UNITILIAZED for locking threads while working with clients queue
 	pthread_mutex_init(&queue_lock,NULL);
 	pthread_mutex_init(&atomic_lock,NULL);
+	pthread_cond_init(&queue_cond,NULL);
 	// Initing our threads
 	for (int i = 0; i < THREADS_FOR_SERVE;i++) 
 		pthread_create(&threads[i],NULL,&thread_logic,NULL);
@@ -378,6 +246,7 @@ int main()
 		pthread_mutex_lock(&queue_lock);
 		add_client_to_serve(client_fd,clients);
 		// Sending signal to one of waiting threads
+		pthread_cond_signal(&queue_cond);
 		pthread_mutex_unlock(&queue_lock);
 
 	}	

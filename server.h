@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 typedef struct sockaddr SA;
 
@@ -52,8 +53,17 @@ void	print_files_list(t_files *head);
 t_token **get_token_commands(char *commands);
 char	*substr(char *start, char *end) ;
 void	free_tokens(t_token **head) ;
-char	*validator(char *commands, char *files) ;
+bool	validator(char *commands, char *files) ;
 t_token **get_token_commands(char *commands) ;
 void	print_tokens(t_token **head) ;
+char	*substr(char *start, char *end);
+char	*get_command(char *all_message);
+char	*get_files_section(char *all_message);
+char 	*str_realloc(char *old, char *new) ;
+t_files	**create_files(char *files);
+void	setup_signal_handler();
+void	exec_command(char *command, int sock_fd) ;
+void	handle_sigint(int sigint) ;
+
 
 #endif

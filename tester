@@ -2,11 +2,11 @@
 
 SERVER="::1"
 PORT=3490
-TOTAL=1
+TOTAL=200
 
 for i in $(seq 1 $TOTAL); do
 {
-    CMD="<COMMAND> cat file_1.txt file_2.txt file_3.txt"
+    CMD="<COMMANDS> cat file_1.txt file_2.txt file_3.txt"
     FILES="<FILES>"
     FILES+="<file_1.txt,Hello from file ${i}_1>"
     FILES+="<file_2.txt,Data for file ${i}_2>"
@@ -19,7 +19,7 @@ for i in $(seq 1 $TOTAL); do
     RESPONSE=$(echo -e "$FULL_REQ" | nc -q 1 -6 "$SERVER" "$PORT")
 
     # Build expected response based on file contents
-EXPECTED="Hello from file ${i}_1Data for file ${i}_2More content from file ${i}_3"
+	EXPECTED="Hello from file ${i}_1Data for file ${i}_2More content from file ${i}_3"
 
 
     # Compare response to expected output

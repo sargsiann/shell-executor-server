@@ -35,8 +35,10 @@ bool	is_allowed(char	*command) {
 		return false;
 	while (allowed[i])
 	{
+
 		if (strcmp(allowed[i],command) == 0) 
 		{
+			printf("Found allowed command: %s\n", command);
 			return true;
 		}
 		i++;
@@ -153,9 +155,9 @@ bool	validate_commands(char *commands)
 }
 
 
-char	*validator(char *commands, char *files) 
+bool	validator(char *commands, char *files) 
 {
 	if (!validate_commands(commands))
-		return "Command handleing error";
-	return NULL;
+		return false;
+	return true;
 }

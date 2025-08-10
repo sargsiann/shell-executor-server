@@ -10,7 +10,7 @@ void add_file(t_files **head, char *name)
 	if (!new_file)
 		return;
 
-	new_file->name = strdup(name);
+	new_file->name = name;
 	if (!new_file->name) {
 		free(new_file);
 		return;
