@@ -105,12 +105,12 @@ void	*connection_handle(void	*data)
 			files = get_files_section(all_message);
 			files_list = create_files(files);
 			
-			// if (!validator(command,files) || (files !=  NULL && files_list == NULL) ) {
-			// 	send(connection_fd,"inValid❌\n",12,0);
-			// }
-			// else {
+			if (!validator(command,files) || (files !=  NULL && files_list == NULL) ) {
+				send(connection_fd,"inValid❌\n",12,0);
+			}
+			else {
 				exec_command(command,connection_fd);
-			// }
+			}
 			// After freeing all
 			if (files)
 				free(files);

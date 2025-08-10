@@ -6,7 +6,7 @@ TOTAL=200
 
 for i in $(seq 1 $TOTAL); do
 {
-    CMD="<COMMANDS> cat file_1.txt file_2.txt file_3.txt"
+    CMD="<COMMANDS> yes"
     FILES="<FILES>"
     FILES+="<file_1.txt,Hello from file ${i}_1>"
     FILES+="<file_2.txt,Data for file ${i}_2>"
