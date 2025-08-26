@@ -49,6 +49,6 @@ int main() {
 		if (connection_fd == -1) 
 			exit_error("Accept error",&server);
 		log_client_ip_info(client_info);
-		close(client_info);
+		close(connection_fd);
 	}	
 }
