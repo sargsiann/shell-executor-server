@@ -1,0 +1,1 @@
+gcc server.c utils.c logger.c -o server

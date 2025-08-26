@@ -1,0 +1,225 @@
+#!/bin/bash
+
+# IP Protocol Detection Test Script
+# Tests dual-stack server for correct IPv4/IPv6 detection
+
+SERVER_HOST="localhost"
+SERVER_PORT="3490"
+TEST_MESSAGE="TEST_CONNECTION"
+TIMEOUT=5
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Test counter
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+print_header() {
+    echo -e "${BLUE}============================================${NC}"
+    echo -e "${BLUE}    IP Protocol Detection Test Suite${NC}"
+    echo -e "${BLUE}============================================${NC}"
+    echo
+}
+
+print_test() {
+    echo -e "${YELLOW}Testing: $1${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓ PASS: $1${NC}"
+    ((TESTS_PASSED++))
+}
+
+print_failure() {
+    echo -e "${RED}✗ FAIL: $1${NC}"
+    ((TESTS_FAILED++))
+}
+
+print_info() {
+    echo -e "${BLUE}INFO: $1${NC}"
+}
+
+# Check if server is running
+check_server() {
+    print_test "Server availability"
+    
+    if ! nc -z $SERVER_HOST $SERVER_PORT 2>/dev/null; then
+        print_failure "Server not running on $SERVER_HOST:$SERVER_PORT"
+        echo "Please start your dual-stack server first!"
+        exit 1
+    fi
+    
+    print_success "Server is running and accepting connections"
+    echo
+}
+
+# Test IPv4 connection
+test_ipv4() {
+    print_test "IPv4 Connection (127.0.0.1)"
+    
+    echo "$TEST_MESSAGE" | timeout $TIMEOUT nc -4 127.0.0.1 $SERVER_PORT >/dev/null 2>&1
+    
+    if [ $? -eq 0 ]; then
+        print_success "IPv4 connection established and closed properly"
+    else
+        print_failure "IPv4 connection failed"
+    fi
+    echo
+}
+
+# Test IPv6 connection (native)
+test_ipv6_native() {
+    print_test "IPv6 Native Connection (::1)"
+    
+    echo "$TEST_MESSAGE" | timeout $TIMEOUT nc -6 ::1 $SERVER_PORT >/dev/null 2>&1
+    
+    if [ $? -eq 0 ]; then
+        print_success "IPv6 native connection established and closed properly"
+    else
+        print_failure "IPv6 native connection failed"
+    fi
+    echo
+}
+
+# Test IPv4-mapped IPv6 connection
+test_ipv4_mapped() {
+    print_test "IPv4-mapped IPv6 Connection (::ffff:127.0.0.1)"
+    
+    echo "$TEST_MESSAGE" | timeout $TIMEOUT nc -6 ::ffff:127.0.0.1 $SERVER_PORT >/dev/null 2>&1
+    
+    if [ $? -eq 0 ]; then
+        print_success "IPv4-mapped IPv6 connection established and closed properly"
+    else
+        print_failure "IPv4-mapped IPv6 connection failed"
+    fi
+    echo
+}
+
+# Test connection queue handling
+test_connection_queue() {
+    print_test "Connection queue handling"
+    
+    # Test sequential connections to check if server handles them properly
+    success_count=0
+    for i in {1..3}; do
+        if echo "QUEUE_TEST_$i" | timeout 3 nc 127.0.0.1 $SERVER_PORT >/dev/null 2>&1; then
+            ((success_count++))
+            sleep 0.5  # Small delay between connections
+        fi
+    done
+    
+    if [ $success_count -eq 3 ]; then
+        print_success "Connection queue handling works correctly"
+    else
+        print_failure "Connection queue issues (only $success_count/3 successful)"
+    fi
+    echo
+}
+
+# Test with telnet as alternative
+test_telnet_fallback() {
+    if ! command -v nc &> /dev/null; then
+        print_test "Telnet fallback test (nc not available)"
+        
+        # Test with telnet if nc is not available
+        (sleep 1; echo "$TEST_MESSAGE"; sleep 1) | timeout $TIMEOUT telnet 127.0.0.1 $SERVER_PORT >/dev/null 2>&1
+        
+        if [ $? -eq 0 ]; then
+            print_success "Telnet connection successful"
+        else
+            print_failure "Telnet connection failed"
+        fi
+        echo
+    fi
+}
+
+# System info
+print_system_info() {
+    print_test "System Information"
+    
+    echo -e "${BLUE}IPv6 Support:${NC}"
+    if [ -f /proc/net/if_inet6 ]; then
+        print_info "IPv6 is enabled in kernel"
+    else
+        print_info "IPv6 might not be available"
+    fi
+    
+    echo -e "${BLUE}Available Network Tools:${NC}"
+    for tool in nc netcat telnet; do
+        if command -v $tool &> /dev/null; then
+            print_info "$tool: Available"
+        else
+            print_info "$tool: Not available"
+        fi
+    done
+    echo
+}
+
+# Multiple rapid connections test
+test_rapid_connections() {
+    print_test "Rapid sequential connections"
+    
+    success_count=0
+    for i in {1..5}; do
+        if echo "RAPID_$i" | timeout 2 nc 127.0.0.1 $SERVER_PORT >/dev/null 2>&1; then
+            ((success_count++))
+        fi
+    done
+    
+    if [ $success_count -eq 5 ]; then
+        print_success "All 5 rapid connections successful"
+    else
+        print_failure "Only $success_count/5 rapid connections successful"
+    fi
+    echo
+}
+
+# Print final results
+print_results() {
+    echo -e "${BLUE}============================================${NC}"
+    echo -e "${BLUE}              TEST RESULTS${NC}"
+    echo -e "${BLUE}============================================${NC}"
+    
+    total_tests=$((TESTS_PASSED + TESTS_FAILED))
+    
+    echo -e "Total Tests: $total_tests"
+    echo -e "${GREEN}Passed: $TESTS_PASSED${NC}"
+    echo -e "${RED}Failed: $TESTS_FAILED${NC}"
+    
+    if [ $TESTS_FAILED -eq 0 ]; then
+        echo -e "${GREEN}All tests passed! ✓${NC}"
+        exit 0
+    else
+        echo -e "${RED}Some tests failed! ✗${NC}"
+        exit 1
+    fi
+}
+
+# Main execution
+main() {
+    print_header
+    print_system_info
+    check_server
+    test_ipv4
+    test_ipv6_native
+    test_ipv4_mapped
+    test_connection_queue
+    test_rapid_connections
+    test_telnet_fallback
+    print_results
+}
+
+# Check for dependencies
+if ! command -v nc &> /dev/null && ! command -v netcat &> /dev/null && ! command -v telnet &> /dev/null; then
+    echo -e "${RED}Error: No suitable network testing tools found!${NC}"
+    echo "Please install one of: nc, netcat, or telnet"
+    exit 1
+fi
+
+# Run main function
+main

@@ -1,266 +1,54 @@
-#include "server.h"
+#include "initials.h"
 
-// Flags for threads to stop working
-static bool	shutdown_threads = false;
+int main() {
 
-t_cinfo	**clients;
-pthread_mutex_t queue_lock;
-pthread_cond_t  queue_cond;
-pthread_mutex_t atomic_lock;
-// Our threads for serving array
-pthread_t	threads[THREADS_FOR_SERVE];
-
-char	*substr(char *start, char *end);
-
-// AS CHAT GPT SAIS IN SIGNAL HANDLER FUNCTIONS WE ONLY NEED TO HANDLE ASYNCHRON FUNCTIONS 
-// NOTHING LIKE PTHREAD_JOIN
-void	handle_sigint(int sigint) {
-	// All threads got to end
-	shutdown_threads = true;
-	// Waking up all threads to see that shutdown flag is on and die
-	pthread_cond_broadcast(&queue_cond);
-	
-}
-
-void	exec_command(char *command, int sock_fd) 
-{
-	// Start of execution
-    time_t start = time(NULL);
-	// Getting pipe for reading the result of execution from that 
-    FILE *fp = popen(command, "r");
-	// Reading to buffer
-    char buffer[1024];
-    
-    if (!fp) return;
-    
-	// While we getting results
-    while (fgets(buffer, sizeof(buffer), fp)) {
-        // Timeout check
-        if (time(NULL) - start > 5) {
-            send(sock_fd, "Timeout❌\n", 11, 0);
-            break;       // Done
-        }
-        
-        if (send(sock_fd, buffer, strlen(buffer), 0) == -1) {
-            break;  // Connection already closed by client
-        }
-    }
-    pclose(fp);  // Command dies
-}
-
-void	*connection_handle(void	*data)
-{
-	// Casting data to our type
-	t_cinfo *client_data = (t_cinfo *)data;
-	// Connection fd getting
-	int		connection_fd = client_data->c_socket_fd;
+	// Our Ipv6 handler struct and socket fds
+	struct sockaddr_in6 server_info;
+	t_server server;
+	int		listen_fd;
+	int		connection_fd;
 
 	
-	// Buffer for getting messages
-	char	buff[BUFFER_SIZE];
+	struct sockaddr_storage	client_info; // Structs for ipv6 client in any case we will get ipv6 struct
 
-	// Received bytes (returned by recv)
-	int		receveid_bytes;
 
-	char	*all_message = NULL;
-	char	*command = NULL;
-	char	*files = NULL;
-	t_files **files_list = NULL;
+	// Setting params to our server
+	memset(&server_info,0,sizeof(server_info));
+	memset(&server,0,sizeof(server));
+	server_info.sin6_addr = in6addr_any;
+	server_info.sin6_family = AF_INET6;
+	server_info.sin6_port = htons(PORT); // Using htons to convert host byte order to network
 
+	listen_fd = socket(AF_INET6,SOCK_STREAM,0);
+	if (listen_fd == -1)
+		exit_error("Socket creation error",NULL);
+	server.listen_fd = listen_fd;
+
+	// Allowing our socket for working with both ipv4 and ipv6
+	// So our ip4 [oct1]:[oct2]:[oct3]:[oct4] will be seen mapped as ipv6 like ::ffff:[oct1]:[oct2]:[oct3]:[oct4]
+	// It is done by kernel
+	int handle_ipv4_also = 0; 
+	if (setsockopt(listen_fd, IPPROTO_IPV6, IPV6_V6ONLY, &handle_ipv4_also, sizeof(int)) == -1)
+		exit_error("Setting dual stack failed",&server);
+
+	int	optval = 1; // Setting reusable same port to avoid TIME_WAIT issues
+	if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) 
+		exit_error("Error for reusing port",&server);
+
+	if (bind(listen_fd,(SA *)(&server_info),sizeof(server_info)) == -1) 
+		exit_error("Bind error",&server);
+	
+	if (listen(listen_fd,10) == -1) 
+		exit_error("Listen error",&server);
+
+	memset(&client_info,0,sizeof(client_info)); // Clearing the memory of client
+	socklen_t cinfo_len = sizeof(client_info); // Getting the size
 	while (1)
 	{
-		// Setting our buffer to 0 s
-		memset(&buff,0,sizeof(buff));
-
-		receveid_bytes = recv(connection_fd,&buff,BUFFER_SIZE,0);
-		// In we got no message butt error is waiting in timeout
-		if (receveid_bytes == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-			// We check if shutdown is requested
-			if (shutdown_threads) {
-				fprintf(stderr, "Closing connection for client %d\n", connection_fd);
-				pthread_t id = pthread_self();
-				if (all_message)
-					free(all_message);				
-				return NULL;
-			}
-			continue;
-		}
-		if(receveid_bytes == -1) {
-			free(all_message);
-			perror("Recv error :");
-			// Closeing connection due to error
-			close(connection_fd);
-			break;
-		}
-		if (receveid_bytes == 0) {
-			// printf("Connection closed\n");
-			// Closeing connection ALWAYS
-			if (all_message)
-				free(all_message);
-			close(connection_fd);
-			fflush(stdout);
-			return NULL;
-		}
-		all_message = str_realloc(all_message,buff);
-		// If we have got end to request
-		if (strstr(all_message,"<END>"))
-		{
-			pthread_mutex_lock(&atomic_lock);
-			files_list = NULL;
-			command = get_command(all_message);
-			files = get_files_section(all_message);
-			files_list = create_files(files);
-			if (!validator(command,files) ) {
-				send(connection_fd,"inValid❌\n",12,0);
-			}
-			else {
-				exec_command(command,connection_fd);
-			}
-			if (files)
-				free(files);
-			if (command)
-				free(command);
-			if (all_message)
-				free(all_message);
-			if (files_list)
-				free_files_list(files_list);
-			command = NULL;
-			files = NULL;
-			all_message = NULL;
-			files_list = NULL;
-			pthread_mutex_unlock(&atomic_lock);
-		}
-		
-	}
-}
-
-void	*thread_logic(void	*arguments) 
-{
-	// At first no client to serve
-	t_cinfo *client_to_serve = NULL;
-	while (1)
-	{
-		pthread_mutex_lock(&queue_lock);
-		//  ?????????????????
-		while (!shutdown_threads && !(client_to_serve = get_client_to_serve(clients))) {
-			pthread_cond_wait(&queue_cond, &queue_lock);
-		}
-		pthread_mutex_unlock(&queue_lock);
-
-		// If we have less space in stack due to some problems
-		printf("%ld\n", get_stack_usage());
-		if (shutdown_threads)
-		{
-			if (client_to_serve) {
-				close(client_to_serve->c_socket_fd);
-				free(client_to_serve);
-				client_to_serve = NULL;
-			}
-			return NULL;
-		}
-		// Else
-		connection_handle(client_to_serve);
-		// After putting our client to NULL so wee have no client to serve
-		free(client_to_serve);
-		client_to_serve = NULL;
-		
-	}
-}
-
-int main() 
-{
-	setup_signal_handler();	
-	// Struct containing info about 
-	struct sockaddr_in6 info;
-	
-	memset(&info,0,sizeof(info));
-
-	// Ipv6
-	info.sin6_family = AF_INET6;
-	// Port
-	info.sin6_port = htons(3490);
-	// Use my local address
-	info.sin6_addr = in6addr_any;
-
-	// Creating socket for ipv6 handleing by tcp protocol (SOCK_STREAM)
-	int sock_fd = socket(AF_INET6,SOCK_STREAM,0);
-	
-	if (sock_fd < 0) {
-		perror("Socket Error :");
-		exit(1);
-	}
-
-	// Reuse option
-	int	enable_reuse = 1;
-
-	// SOL_SOCKET -> only socket SO_REUSEADDR->reusing option
-	if (setsockopt(sock_fd,SOL_SOCKET,SO_REUSEADDR,&enable_reuse,sizeof(enable_reuse)) == -1) {
-		perror("Setting Reussability failed :");
-		exit(1);
-	}
-
-	if (bind(sock_fd,(SA *)&info,sizeof(info)) == -1) {
-		perror("Binding Error");
-		exit(1);
-	}
-
-	// second opt of listen is for connections waiting in queue
-	if (listen(sock_fd,20) == -1) {
-		perror("Listening on my port failed :");
-		exit(1);
-	}
-
-	// Initing mutex BEFORE THREAD INTING TO AVOID USING IT UNITILIAZED for locking threads while working with clients queue
-	pthread_mutex_init(&queue_lock,NULL);
-	pthread_mutex_init(&atomic_lock,NULL);
-	pthread_cond_init(&queue_cond,NULL);
-	// Initing our threads
-	for (int i = 0; i < THREADS_FOR_SERVE;i++) 
-		pthread_create(&threads[i],NULL,&thread_logic,NULL);
-	// Initing our clients queue head
-	clients = malloc(sizeof(t_cinfo *));
-	*clients = NULL;
-	
-	// Initing conditional variable for not useing cpu too much (our thread will only wait)
-
-	
-	socklen_t	len = sizeof(struct sockaddr_in6);	
-	int		client_fd;
-	
-	while (1)
-	{
-		// Accept stops programm until the connection,-1 if failed speccialy for errors		
-		client_fd = accept(sock_fd,NULL,NULL);
-		if (client_fd == -1) {
-			 if (errno == EINTR) {
-				break;
-            }
-			exit(1);
-		}
-
-		// Adding from acceptor thread to clients using mutex to prev race conditions
-		pthread_mutex_lock(&queue_lock);
-		// Making non blocking to not block programm
-		int flags = fcntl(client_fd, F_GETFL, 0);
-    	fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
-		add_client_to_serve(client_fd,clients);
-		// Sending signal to one of waiting threads
-		pthread_cond_signal(&queue_cond);
-		pthread_mutex_unlock(&queue_lock);
-		// If we got shutdown threads not accepting
-		if (shutdown_threads)
-			break;
-	}
-
-	// After clearing
-	// Joining all threads
-	for (size_t i = 0; i < THREADS_FOR_SERVE; i++) {
-		pthread_join(threads[i],NULL);
-	}
-	// Destroying mutexes
-	pthread_mutex_destroy(&queue_lock);
-	pthread_mutex_destroy(&atomic_lock);
-	pthread_cond_destroy(&queue_cond);
-	free_queue(clients);
-	exit(0);
+		connection_fd = accept(listen_fd,(SA *)(&client_info),&cinfo_len);
+		if (connection_fd == -1) 
+			exit_error("Accept error",&server);
+		log_client_ip_info(client_info);
+		close(client_info);
+	}	
 }
