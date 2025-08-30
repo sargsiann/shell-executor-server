@@ -26,7 +26,6 @@ typedef enum  {
     PARSING_REQUEST_LINE,
     PARSING_HEADERS,
     PARSING_BODY,
-	PARSING_CLOSED, // while parsing ` connection closed
     PARSING_DONE,
     PARSING_ERROR
 } ParserState;
@@ -69,12 +68,14 @@ typedef struct Headers {
 }	Headers;
 
 typedef struct Request {
-	int		client_fd; // fd of client
-	char	*method; // POST
-	char	*uri; // should be /exec
-	char	*version; // Should be http 1.1
-	Body	*body; // Body 
-	Dictionary	*Headers; // Headers
+	int				client_fd; // fd of client
+	char			*method; // POST
+	char			*uri; // should be /exec
+	char			*version; // Should be http 1.1
+	Body			*body; // Body 
+	Dictionary		*Headers; // Headers
+	ErrorMessage	err; // by default nothing here depends on that will be understandable response
+	char			*response; // and the final is the response to that request it will be formed
 }	Request;
 
 
