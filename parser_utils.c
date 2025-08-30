@@ -47,3 +47,10 @@ char	*substr(char *from, char *start, char *end)
 	res[i] = 0;
 	return res;
 }
+
+char	*first_no_space(char *str) 
+{
+	while (*str == ' ' || *str == '\t')
+		str++;
+	return str;
+}

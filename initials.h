@@ -47,7 +47,6 @@ typedef enum {
 typedef	struct File {
 	char	*name;
 	char	*content;
-	size_t	len;
 }	File;
 
 typedef struct Body {
@@ -61,21 +60,18 @@ typedef struct Dictionary{
 	char	*value;
 }	Dictionary;
 
-typedef struct Headers {
-	int		size; //size of dynamic vector
-	Dictionary	*headers; // headers for actions
-	char	*multipart_delimiter; // the delimiter to get body fields
-}	Headers;
 
 typedef struct Request {
+	char			*multipart_delimiter; //delimiter for multipart data receving
 	int				client_fd; // fd of client
 	char			*method; // POST
 	char			*uri; // should be /exec
 	char			*version; // Should be http 1.1
 	Body			*body; // Body 
-	Dictionary		*Headers; // Headers
+	Dictionary		Headers[4]; //wee need to handle 6 headers at this moment
 	ErrorMessage	err; // by default nothing here depends on that will be understandable response
 	char			*response; // and the final is the response to that request it will be formed
+	bool			transfer_encoding_chunked; // the flag of how getting the data
 }	Request;
 
 
@@ -87,5 +83,6 @@ char	*str_realloc(char *old, char *to_add) ;
 void	request_handler(void *conn_fd) ;
 void	free_server(t_infos *serv);
 char	*substr(char *from, char *start, char *end) ;
+char	*first_no_space(char *str);
 
 #endif
