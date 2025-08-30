@@ -4,7 +4,7 @@ int main() {
 
 	// Our Ipv6 handler struct and socket fds
 	struct sockaddr_in6 server_info;
-	t_server server;
+	t_infos server;
 	int		listen_fd;
 	int		connection_fd;
 
@@ -22,7 +22,7 @@ int main() {
 	listen_fd = socket(AF_INET6,SOCK_STREAM,0);
 	if (listen_fd == -1)
 		exit_error("Socket creation error",NULL);
-	server.listen_fd = listen_fd;
+	server.fd = listen_fd;
 
 	// Allowing our socket for working with both ipv4 and ipv6
 	// So our ip4 [oct1]:[oct2]:[oct3]:[oct4] will be seen mapped as ipv6 like ::ffff:[oct1]:[oct2]:[oct3]:[oct4]
@@ -49,6 +49,6 @@ int main() {
 		if (connection_fd == -1) 
 			exit_error("Accept error",&server);
 		log_client_ip_info(client_info);
-		close(connection_fd);
+		request_handler(&connection_fd);
 	}	
 }

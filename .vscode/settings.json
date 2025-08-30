@@ -4,6 +4,8 @@
 		"server.h": "c",
 		"pthread.h": "c",
 		"fcntl.h": "c",
-		"typeinfo": "c"
+		"typeinfo": "c",
+		"initials.h": "c",
+		"cstdlib": "c"
 	}
 }

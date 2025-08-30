@@ -1,12 +1,12 @@
 # Define the C compiler and compiler flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -g
+# CFLAGS =  -g
 
 # Define the name of the executable
 TARGET = server
 
 # Define the source files (.c files)
-SRCS = server.c parser.c utils.c
+SRCS = $(wildcard *.c)
 
 # Define the object files (.o files) based on the source files
 OBJS = $(SRCS:.c=.o)

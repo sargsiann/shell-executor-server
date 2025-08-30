@@ -1,10 +1,11 @@
 #include "initials.h"
 
-void	free_server(t_server *serv) {
-	close(serv->listen_fd);
+void	free_server(t_infos *serv)
+{
+	close(serv->fd);
 }
 
-void	exit_error(const char *msg,t_server *to_free) 
+void	exit_error(const char *msg,t_infos *to_free) 
 {
 	perror(msg);
 	if (to_free) {

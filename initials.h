@@ -13,19 +13,20 @@
  #include <stdlib.h>
  #include <stdbool.h>
  #include <pthread.h>
+ #include <errno.h>
 
 typedef struct sockaddr SA;
 
 // For main thread server
-typedef struct t_server {
-	int	listen_fd;
-}	t_server;
+typedef struct t_infos {
+	int	fd;
+}	t_infos;
 
 typedef enum  {
     PARSING_REQUEST_LINE,
     PARSING_HEADERS,
-    PARSING_MULTIPART_HEADERS,
-    PARSING_MULTIPART_BODY,
+    PARSING_BODY,
+	PARSING_CLOSED, // while parsing ` connection closed
     PARSING_DONE,
     PARSING_ERROR
 } ParserState;
@@ -36,14 +37,13 @@ typedef enum {
 	ERR_MALFORMED_REQUEST_LINE, // wrong format of req line
     ERR_UNSUPPORTED_METHOD, // not the POST method
     ERR_UNSUPPORTED_VERSION,  // not the HTTP 1.1
-
-    ERR_HEADERS_TOO_LARGE,
+    ERR_HEADERS_TOO_LARGE, 
     ERR_INVALID_HEADER_FORMAT,
     ERR_INVALID_BOUNDARY,
     ERR_BODY_TOO_LARGE,
     ERR_MULTIPART_TOO_LARGE,
     ERR_UNKNOWN
-} ParseResult ; 
+} ErrorMessage; 
 
 typedef	struct File {
 	char	*name;
@@ -57,28 +57,34 @@ typedef struct Body {
 	int		files_len;
 }	Body;
 
-typedef struct Header {
+typedef struct Dictionary{
 	char	*name;
 	char	*value;
-}	Header;
+}	Dictionary;
 
 typedef struct Headers {
-	int		size;
-	Header	*headers;
+	int		size; //size of dynamic vector
+	Dictionary	*headers; // headers for actions
+	char	*multipart_delimiter; // the delimiter to get body fields
 }	Headers;
 
 typedef struct Request {
+	int		client_fd; // fd of client
 	char	*method; // POST
 	char	*uri; // should be /exec
 	char	*version; // Should be http 1.1
 	Body	*body; // Body 
-	Header	*Headers; // Headers
+	Dictionary	*Headers; // Headers
 }	Request;
 
 
 
-void	exit_error(const char *msg,t_server *to_free) ;
+void	exit_error(const char *msg,t_infos *to_free) ;
 bool	is_ipv6_mapped(struct in6_addr sin6_addr) ;
 void	log_client_ip_info(struct sockaddr_storage client_info) ;
+char	*str_realloc(char *old, char *to_add) ;
+void	request_handler(void *conn_fd) ;
+void	free_server(t_infos *serv);
+char	*substr(char *from, char *start, char *end) ;
 
 #endif
