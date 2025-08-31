@@ -68,10 +68,11 @@ typedef struct Request {
 	char			*uri; // should be /exec
 	char			*version; // Should be http 1.1
 	Body			*body; // Body 
-	Dictionary		Headers[4]; //wee need to handle 6 headers at this moment
+	Dictionary		Headers[6]; //wee need to handle 5 headers at this moment
+	short			headers_count; // the count of filled headers
 	ErrorMessage	err; // by default nothing here depends on that will be understandable response
 	char			*response; // and the final is the response to that request it will be formed
-	bool			transfer_encoding_chunked; // the flag of how getting the data
+	// bool			transfer_encoding_chunked; // the flag of how getting the data
 }	Request;
 
 

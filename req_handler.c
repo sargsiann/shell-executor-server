@@ -53,12 +53,12 @@ ParserState	parse_first_line(char	*section, Request *request_struct) // the firs
 	return PARSING_HEADERS; // first line parsing done ! continueing to headers
 }
 
-bool		has_same_key(Dictionary headers[]) 
+bool		has_same_key(Dictionary headers[], char *name, short count) 
 {
 
 }
 
-bool		handle_header_pair(char *line_s, char *delim, char *end, Dictionary headers[], short index) 
+bool		handle_header_pair(char *line_s, char *delim, char *end, Dictionary headers[], short *index) 
 {
 	// line_s -> to delimiter is the key delim + [spaces] values ->end is the value
 	if (strncmp(line_s,"Host",4) == 0)
@@ -66,59 +66,64 @@ bool		handle_header_pair(char *line_s, char *delim, char *end, Dictionary header
 		if (first_no_space(line_s + 4) != delim) // if after spaces no delim no standard header return error
 			return false;
 		
-		headers[index].name = strdup("Host"); // just name
-		headers[index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of host
+		headers[*index].name = strdup("Host"); // just name
+		headers[*index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of host
+		(*index)++;
 		return true;
 	}
 	if(strncmp(line_s,"Content-Length",14) == 0)
 	{
 		if (first_no_space(line_s + 14) != delim) // if after spaces no delim no standard header return error
 			return false;
-		headers[index].name = strdup("Content-Length"); // just name
-		headers[index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of content length
+		headers[*index].name = strdup("Content-Length"); // just name
+		headers[*index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of content length
+		(*index)++;
 		return true;
 	}
 	if(strncmp(line_s,"Transfer-Encoding",17) == 0)
 	{
 		if (first_no_space(line_s + 17) != delim) // if after spaces no delim no standard header return error
 			return false;
-		headers[index].name = strdup("Transfer-Encoding"); // just name
-		headers[index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of content length
+		headers[*index].name = strdup("Transfer-Encoding"); // just name
+		headers[*index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of content length
+		(*index)++;
 		return true;
 	}
 	if(strncmp(line_s,"Content-Type",12) == 0) {
 		if (first_no_space(line_s + 12) != delim) // if after spaces no delim no standard header return error
 			return false;
-		headers[index].name = strdup("Content-Type"); // just name
-		headers[index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of content type
+		headers[*index].name = strdup("Content-Type"); // just name
+		headers[*index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of content type
+		(*index)++;
 		return true;
 	}
 	if (strncmp(line_s,"User-Agent",10) == 0) {
 		if (first_no_space(line_s + 10) != delim) // if after spaces no delim no standard header return error
 			return false;
-		headers[index].name = strdup("User-Agent"); // just name
-		headers[index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of user agent
+		headers[*index].name = strdup("User-Agent"); // just name
+		headers[*index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of user agent
+		(*index)++;
 		return true;
 	}
 	if(strncmp(line_s,"Connection",10) == 0) {
 		if (first_no_space(line_s + 10) != delim) // if after spaces no delim no standard header return error
 			return false;
-		headers[index].name = strdup("Connection"); // just name
-		headers[index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of connection
+		headers[*index].name = strdup("Connection"); // just name
+		headers[*index].value = substr(delim + 1, first_no_space(delim + 1), end); // extracting the value of connection
+		(*index)++;
 		return true;
 	}
 }
 
 // Function for just validating and parsing line
-ParserState	parse_header_line(char *line_start, Request *request_struct, short index) 
+ParserState	parse_header_line(char *line_start, Request *request_struct, short *index) 
 {
 	char	*line_end = strstr(line_start, "\r\n"); //getting memory addres of line end
 	char	*delimiter = memchr(line_start,':',line_end - line_start); // finding the : deliniter
 
 	if (!delimiter) // if we have no : in our line of header its invalid
 		request_struct->err = ERR_INVALID_HEADER_FORMAT;
-	
-	fprintf(stderr,"\n");
+	handle_header_pair(line_start, delimiter, line_end, request_struct->Headers, index);
 }
 
 // Headers important 1Host : for all types , 2Content-Lenght or 2Transfer encoding, 3Content type cant be two times for POST 
@@ -133,59 +138,91 @@ ParserState	parse_headers(char *section, Request *request_struct)
 		section = strstr(section,"\r\n");
 		if (strncmp(section,"\r\n\r\n",4) == 0) //weve got to the end of headers section
 			break;
-		parse_header_line(section + 2,request_struct,0);
+		parse_header_line(section + 2,request_struct,&index);
 		section += 2;
-	}	
-
+	}
+	request_struct->headers_count = index; // filling the count of headers
 	return PARSING_BODY; // every thing ok going to body parsing
 }
+
+void	free_headers(int count, Dictionary headers[]) // function for freeing headers
+{
+	// count is size of headers array that was filled
+	for (int i = 0; i < count; i++) {
+		if (headers[i].name != NULL) {
+			free(headers[i].name);
+			headers[i].name = NULL;
+		}
+		if (headers[i].value != NULL) {
+			free(headers[i].value);
+			headers[i].value = NULL;
+		}
+	}
+}
+
 
 void	free_parser(char	*section, Request *request_struct, ParserState state) // is used in error case SO IF WE FREED PARSER IN PARSING STATE THAT MEANS WE GOT ERROR
 {
 	if (section != NULL) // freeing remained memory of section char *
 		free(section);
-	if (state < PARSING_HEADERS) //if we are on request line
+	short i = 0;
+	while (i <= state) // freeing all headers
 	{
-		if (request_struct->method != NULL) {
-			free(request_struct->method);
-			request_struct->method = NULL;
+		if (i == PARSING_REQUEST_LINE) //if we are on request line
+		{
+			if (request_struct->method != NULL) {
+				free(request_struct->method);
+				request_struct->method = NULL;
+			}
+			if (request_struct->uri != NULL) {
+				free(request_struct->uri);
+				request_struct->uri = NULL;
+			}
+			if (request_struct->version != NULL) {
+				free(request_struct->version);
+				request_struct->version = NULL;
+			}
 		}
-		if (request_struct->uri != NULL) {
-			free(request_struct->uri);
-			request_struct->uri = NULL;
-		}
-		if (request_struct->version != NULL) {
-			free(request_struct->version);
-			request_struct->version = NULL;
-		}
+		if (i == PARSING_HEADERS)
+			free_headers(request_struct->headers_count, request_struct->Headers);
+		i++;
 	}
 }
-
 
 
 ParserState	parse_section_by_state(char	*section, char *end, Request *request_struct, ParserState state) 
 {
 	if (state == PARSING_REQUEST_LINE) // the first line parseing
 		return parse_first_line(section,request_struct); // in first line we know that we dont need end just go that \r\n
-	if (state == PARSING_HEADERS)
-		return parse_headers(section, request_struct);
+	if (state == PARSING_HEADERS) // the headers parsing
+		return parse_headers(section, request_struct); 
 }
 
 char	*section_end_ptr(char *section,ParserState state) 
 {
 	if (state == PARSING_REQUEST_LINE) // the first line before headers ends with \r\n
 		return strstr(section,"\r\n");
-	return strstr(section,"\r\n");
+	return strstr(section,"\r\n"); // else all ends with \r\n\r\n
 }
 
 char	*change_section_by_state(char *section, ParserState state) //extracting remained part FE removing headers part if done 
 {
 	char *res = NULL;
-	if (state == PARSING_REQUEST_LINE) {
+	if (state == PARSING_REQUEST_LINE) // the first line before headers ends with \r\n
 		res = substr(section, strstr(section,"\r\n"), section + strlen(section));	
-	}
+	if (state == PARSING_HEADERS) // the headers end is \r\n\r\n
+		res = substr(section, strstr(section,"\r\n\r\n"), section + strlen(section));
 	free(section); // freeing the previous section memory address
 	return res;
+}
+
+void	print_headers(short size, Dictionary headers[]) 
+{
+	for (short i = 0; i < size; i++)
+	{
+		if (headers[i].name != NULL && headers[i].value != NULL)
+			fprintf(stderr,"Header %d: %s: %s\n", i, headers[i].name, headers[i].value);
+	}
 }
 
 Request	http_parser(int	client_socket) 
@@ -232,6 +269,8 @@ Request	http_parser(int	client_socket)
 		memset(buff,0,bytes_read); //cleaning buffer up each time
 	}
 	fprintf(stderr,"%s : method %s : uri %s : version \n",request_struct.method,request_struct.uri,request_struct.version);
+	fprintf(stderr,"Headers count: %d\n", request_struct.headers_count);
+	print_headers(request_struct.headers_count, request_struct.Headers);
 }
 
 // The main request handler func for each thread for first parsing then executing and response sending
